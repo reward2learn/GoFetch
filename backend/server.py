@@ -115,6 +115,15 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
 class LoginBody(BaseModel):
     name: str
     email: str
+    acceptedTerms: bool = False
+
+
+class HandoffBody(BaseModel):
+    name: str
+    address: str = ""
+    note: str = ""
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
 
 class ProfileUpdate(BaseModel):
@@ -191,6 +200,10 @@ class TravelPlanCreate(BaseModel):
 # ---------------------------------------------------------------------------
 # Serializers
 # ---------------------------------------------------------------------------
+def is_top_traveller(u: dict) -> bool:
+    return u.get("tripsCompleted", 0) >= 3 and u.get("reputation", 0.0) >= 4.7
+
+
 def public_user(u: dict) -> dict:
     return {
         "id": u["id"],
@@ -204,8 +217,18 @@ def public_user(u: dict) -> dict:
         "reviewsCount": u.get("reviewsCount", 0),
         "ordersCompleted": u.get("ordersCompleted", 0),
         "tripsCompleted": u.get("tripsCompleted", 0),
+        "topTraveller": is_top_traveller(u),
+        "acceptedTerms": bool(u.get("acceptedTermsAt")),
         "createdAt": u.get("createdAt"),
     }
+
+
+async def add_notification(user_id: str, ntype: str, title: str, body: str,
+                           request_id: str = None, plan_id: str = None):
+    await db.notifications.insert_one({
+        "id": new_id(), "userId": user_id, "type": ntype, "title": title, "body": body,
+        "requestId": request_id, "planId": plan_id, "read": False, "createdAt": now_iso(),
+    })
 
 
 async def record_tx(user_id: str, tx_type: str, amount: float, order_id: str = None, note: str = ""):
@@ -260,13 +283,17 @@ async def login(body: LoginBody):
             "kycStatus": "unverified", "reputation": 0.0, "reviewsCount": 0,
             "ordersCompleted": 0, "tripsCompleted": 0,
             "usdcBalance": STARTING_TEST_BALANCE, "lockedBalance": 0.0,
+            "acceptedTermsAt": now_iso() if body.acceptedTerms else None,
             "token": token, "createdAt": now_iso(),
         }
         await db.users.insert_one(user)
     else:
         token = user.get("token") or new_id()
-        await db.users.update_one({"id": user["id"]}, {"$set": {"token": token, "name": body.name.strip() or user["name"]}})
-        user["token"] = token
+        updates = {"token": token, "name": body.name.strip() or user["name"]}
+        if body.acceptedTerms and not user.get("acceptedTermsAt"):
+            updates["acceptedTermsAt"] = now_iso()
+        await db.users.update_one({"id": user["id"]}, {"$set": updates})
+        user.update(updates)
     return {"token": token, "user": public_user(user)}
 
 
@@ -453,9 +480,34 @@ async def create_travel_plan(body: TravelPlanCreate, user=Depends(get_current_us
     }
     await db.travel_plans.insert_one(doc)
     matches = await _requests_matching(body.fromCountry, body.toCountry, exclude_buyer=user["id"])
+    for r in matches:
+        await add_notification(
+            r["buyerId"], "traveller_match",
+            "A traveller can deliver your request",
+            f"{user['name']} is flying {body.fromCountry} → {body.toCountry} and can bring '{r['title']}'.",
+            request_id=r["id"], plan_id=doc["id"],
+        )
     out = clean(doc)
     out["matchCount"] = len(matches)
     return out
+
+
+@api_router.get("/notifications")
+async def list_notifications(user=Depends(get_current_user)):
+    notifs = await db.notifications.find({"userId": user["id"]}).sort("createdAt", -1).to_list(100)
+    return [clean(n) for n in notifs]
+
+
+@api_router.get("/notifications/unread-count")
+async def unread_count(user=Depends(get_current_user)):
+    n = await db.notifications.count_documents({"userId": user["id"], "read": False})
+    return {"count": n}
+
+
+@api_router.post("/notifications/read-all")
+async def read_all(user=Depends(get_current_user)):
+    await db.notifications.update_many({"userId": user["id"], "read": False}, {"$set": {"read": True}})
+    return {"ok": True}
 
 
 @api_router.get("/travel-plans/mine")
@@ -738,6 +790,23 @@ async def cancel_order(order_id: str, user=Depends(get_current_user)):
     await db.orders.update_one({"id": order_id}, {"$set": {"status": "cancelled"},
                                "$push": {"timeline": {"status": "cancelled", "at": now_iso()}}})
     await db.requests.update_one({"id": o["requestId"]}, {"$set": {"status": "open"}})
+    fresh = await db.orders.find_one({"id": order_id})
+    return await enrich_order(fresh)
+
+
+@api_router.post("/orders/{order_id}/handoff-spot")
+async def set_handoff_spot(order_id: str, body: HandoffBody, user=Depends(get_current_user)):
+    o = await db.orders.find_one({"id": order_id})
+    if not o:
+        raise HTTPException(404, "Order not found")
+    if user["id"] not in (o["buyerId"], o["travelerId"]):
+        raise HTTPException(403, "Not your order")
+    spot = {
+        "name": body.name, "address": body.address, "note": body.note,
+        "lat": body.lat, "lng": body.lng, "setBy": user["id"], "setByName": user["name"],
+        "at": now_iso(),
+    }
+    await db.orders.update_one({"id": order_id}, {"$set": {"handoffSpot": spot}})
     fresh = await db.orders.find_one({"id": order_id})
     return await enrich_order(fresh)
 

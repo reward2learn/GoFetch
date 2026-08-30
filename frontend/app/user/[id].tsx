@@ -60,12 +60,13 @@ export default function UserProfile() {
             <AppText weight="bold">{user.reputation ? user.reputation.toFixed(1) : "New"}</AppText>
             <AppText color={colors.muted} size={type.sm}>({user.reviewsCount})</AppText>
           </View>
-          <View style={{ marginTop: spacing.sm }}>
+          <View style={{ marginTop: spacing.sm, flexDirection: "row", gap: spacing.sm, flexWrap: "wrap", justifyContent: "center" }}>
             <Badge
               label={verified ? "KYC Verified" : "Unverified"}
               tone={verified ? "success" : "warning"}
               icon={verified ? "shield-checkmark" : "alert-circle"}
             />
+            {user.topTraveller && <Badge label="Top Traveller" tone="warning" icon="ribbon" />}
           </View>
           <View style={styles.statsRow}>
             <Stat value={String(user.ordersCompleted)} label="Orders" icon="bag-check" />

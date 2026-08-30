@@ -1,12 +1,12 @@
 import React, { useCallback, useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, TextInput, Linking } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 
-import { AppText, Avatar, Badge, Button, Card, Divider, colors, radius, spacing, type, usd, shadow } from "@/src/components/ui";
+import { AppText, Avatar, Badge, Button, Card, Divider, colors, radius, spacing, type, usd, shadow, font } from "@/src/components/ui";
 import { STATUS_STEPS, STATUS_STEP_LABEL, STATUS_LABEL, statusColor } from "@/src/constants";
 import { api, fileUrl } from "@/src/api/client";
 import { useAuth } from "@/src/context/AuthContext";
@@ -21,6 +21,9 @@ export default function OrderDetail() {
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState("");
+  const [spotOpen, setSpotOpen] = useState(false);
+  const [spotName, setSpotName] = useState("");
+  const [spotAddress, setSpotAddress] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -68,6 +71,27 @@ export default function OrderDetail() {
     } finally {
       setBusy(null);
     }
+  };
+
+  const saveSpot = async () => {
+    if (!spotName.trim()) return;
+    setBusy("spot");
+    try {
+      await api.post(`/orders/${id}/handoff-spot`, { name: spotName.trim(), address: spotAddress.trim() });
+      setSpotOpen(false);
+      setSpotName("");
+      setSpotAddress("");
+      await load();
+    } catch (e: any) {
+      setErr(e.message || "Could not save spot.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const openMaps = (spot: any) => {
+    const q = encodeURIComponent(`${spot.name} ${spot.address || ""}`.trim());
+    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${q}`).catch(() => {});
   };
 
   if (loading || !order) {
@@ -179,9 +203,10 @@ export default function OrderDetail() {
               <Pressable testID="view-counterparty" onPress={() => router.push(`/user/${other.id}`)} style={styles.cpInfo}>
                 <Avatar name={other.name} size={44} />
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <AppText weight="bold">{other.name}</AppText>
                     {other.kycStatus === "verified" && <Ionicons name="checkmark-circle" size={15} color={colors.brandPrimary} />}
+                    {other.topTraveller && <Badge label="Top" tone="warning" icon="ribbon" />}
                   </View>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
                     <Ionicons name="star" size={12} color={colors.warning} />
@@ -193,6 +218,40 @@ export default function OrderDetail() {
                 <Ionicons name="chatbubble-ellipses" size={20} color={colors.onBrandPrimary} />
               </Pressable>
             </View>
+          </Card>
+        )}
+
+        {["funded", "purchased", "in_transit", "arrived", "completed"].includes(order.status) && (
+          <Card style={{ marginTop: spacing.md }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: spacing.sm }}>
+              <Ionicons name="location" size={16} color={colors.brandPrimary} />
+              <AppText weight="bold">Safe handoff spot</AppText>
+            </View>
+            {order.handoffSpot ? (
+              <View>
+                <View style={styles.spotRow}>
+                  <View style={styles.spotPin}><Ionicons name="pin" size={18} color={colors.onBrandPrimary} /></View>
+                  <View style={{ flex: 1 }}>
+                    <AppText weight="semibold">{order.handoffSpot.name}</AppText>
+                    {!!order.handoffSpot.address && <AppText size={type.sm} color={colors.muted}>{order.handoffSpot.address}</AppText>}
+                    <AppText size={type.sm} color={colors.muted}>Set by {order.handoffSpot.setByName}</AppText>
+                  </View>
+                </View>
+                <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
+                  <Button testID="open-maps-button" title="Open in Maps" variant="outline" icon="map" onPress={() => openMaps(order.handoffSpot)} style={{ flex: 1, height: 44 }} />
+                  {order.status !== "completed" && (
+                    <Button title="Change" variant="outline" icon="create-outline" onPress={() => setSpotOpen(true)} style={{ flex: 1, height: 44 }} />
+                  )}
+                </View>
+              </View>
+            ) : (
+              <>
+                <AppText size={type.sm} color={colors.muted} style={{ marginBottom: spacing.md, lineHeight: 19 }}>
+                  Meet in a busy public place. Pick a spot you both know for a safe hand-over.
+                </AppText>
+                <Button testID="set-spot-button" title="Set safe meeting spot" icon="location" variant="secondary" onPress={() => setSpotOpen(true)} />
+              </>
+            )}
           </Card>
         )}
 
@@ -228,6 +287,28 @@ export default function OrderDetail() {
         onRespond={(action) => act("respond", { action }, "respond")}
         onReview={() => router.push(`/review/${id}`)}
       />
+
+      <Modal visible={spotOpen} transparent animationType="slide" onRequestClose={() => setSpotOpen(false)}>
+        <Pressable style={styles.modalBg} onPress={() => setSpotOpen(false)}>
+          <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + spacing.lg }]}>
+            <View style={styles.sheetHandle} />
+            <AppText weight="bold" size={type.lg}>Safe meeting spot</AppText>
+            <AppText size={type.sm} color={colors.muted} style={{ marginTop: 4, marginBottom: spacing.md }}>
+              Pick a suggested public place or enter your own.
+            </AppText>
+            <View style={styles.spotChips}>
+              {["Shopping mall concierge", "Airport arrivals point", "Police station lobby", "Major transit station", "Hotel lobby", "Busy cafe"].map((s) => (
+                <Pressable key={s} testID={`spot-chip-${s}`} onPress={() => setSpotName(s)} style={[styles.spotChip, spotName === s && styles.spotChipActive]}>
+                  <AppText size={type.sm} weight="semibold" color={spotName === s ? colors.onBrandPrimary : colors.onSurfaceTertiary}>{s}</AppText>
+                </Pressable>
+              ))}
+            </View>
+            <TextInput testID="spot-name-input" placeholder="Place name" placeholderTextColor={colors.muted} value={spotName} onChangeText={setSpotName} style={styles.spotInput} />
+            <TextInput testID="spot-address-input" placeholder="Address / area (optional)" placeholderTextColor={colors.muted} value={spotAddress} onChangeText={setSpotAddress} style={styles.spotInput} />
+            <Button testID="save-spot-button" title="Save meeting spot" icon="location" onPress={saveSpot} loading={busy === "spot"} style={{ marginTop: spacing.md }} />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -324,6 +405,24 @@ const styles = StyleSheet.create({
   receipt: { width: "100%", height: 160, borderRadius: radius.md, backgroundColor: colors.surfaceTertiary },
   cpRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   cpInfo: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.md },
+  spotRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  spotPin: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.brandSecondary, alignItems: "center", justifyContent: "center" },
+  modalBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+  sheet: { backgroundColor: colors.surfaceSecondary, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.borderStrong, alignSelf: "center", marginBottom: spacing.md },
+  spotChips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginBottom: spacing.md },
+  spotChip: { paddingHorizontal: spacing.md, height: 38, justifyContent: "center", borderRadius: radius.pill, backgroundColor: colors.surfaceTertiary, borderWidth: 1, borderColor: colors.border },
+  spotChipActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
+  spotInput: {
+    backgroundColor: colors.surfaceTertiary,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    height: 48,
+    marginBottom: spacing.sm,
+    fontFamily: font.medium,
+    fontSize: type.base,
+    color: colors.onSurface,
+  },
   chatBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.brandPrimary, alignItems: "center", justifyContent: "center" },
   footer: {
     position: "absolute",

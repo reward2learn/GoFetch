@@ -29,6 +29,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [accepted, setAccepted] = useState(false);
 
   const onContinue = async () => {
     setError("");
@@ -36,9 +37,13 @@ export default function Login() {
       setError("Please enter your name and a valid email.");
       return;
     }
+    if (!accepted) {
+      setError("Please accept the Terms & Conditions and Privacy Policy.");
+      return;
+    }
     setLoading(true);
     try {
-      await login(name.trim(), email.trim());
+      await login(name.trim(), email.trim(), true);
       router.replace("/(tabs)/explore");
     } catch (e: any) {
       setError(e.message || "Could not sign in.");
@@ -123,11 +128,30 @@ export default function Login() {
                     {error}
                   </AppText>
                 )}
+                <Pressable testID="accept-terms" onPress={() => setAccepted((a) => !a)} style={styles.termsRow}>
+                  <Ionicons
+                    name={accepted ? "checkbox" : "square-outline"}
+                    size={22}
+                    color={accepted ? colors.brandPrimary : colors.muted}
+                  />
+                  <AppText size={type.sm} color={colors.onSurfaceTertiary} style={{ flex: 1, lineHeight: 19 }}>
+                    I agree to the{" "}
+                    <AppText size={type.sm} weight="bold" color={colors.brandPrimary} onPress={() => router.push("/legal/terms")}>
+                      Terms & Conditions
+                    </AppText>{" "}
+                    and{" "}
+                    <AppText size={type.sm} weight="bold" color={colors.brandPrimary} onPress={() => router.push("/legal/privacy")}>
+                      Privacy Policy
+                    </AppText>
+                    .
+                  </AppText>
+                </Pressable>
                 <Button
                   testID="login-submit-button"
                   title="Create wallet & continue"
                   onPress={onContinue}
                   loading={loading}
+                  disabled={!accepted}
                   icon="arrow-forward"
                 />
               </View>
@@ -175,4 +199,5 @@ const styles = StyleSheet.create({
     height: 50,
   },
   input: { flex: 1, fontFamily: font.medium, fontSize: type.base, color: colors.onSurface },
+  termsRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 4 },
 });

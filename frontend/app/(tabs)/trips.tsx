@@ -1,5 +1,5 @@
-import React, { useCallback, useState } from "react";
-import { View, StyleSheet, FlatList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { View, StyleSheet, FlatList, Pressable, ActivityIndicator, RefreshControl, ScrollView } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,6 +19,17 @@ export default function Trips() {
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [planFilter, setPlanFilter] = useState<string>("all");
+
+  const inboxView = useMemo(() => {
+    let list = planFilter === "all" ? inbox : inbox.filter((r) => r.matchedPlanId === planFilter);
+    return [...list].sort((a, b) => {
+      if (a.deadline && b.deadline) return a.deadline < b.deadline ? -1 : 1;
+      if (a.deadline) return -1;
+      if (b.deadline) return 1;
+      return 0;
+    });
+  }, [inbox, planFilter]);
 
   const load = useCallback(async () => {
     try {
@@ -47,6 +58,12 @@ export default function Trips() {
       <View style={{ flex: 1, gap: 4 }}>
         <Badge label={item.matchedRoute} tone="brand" icon="airplane" />
         <AppText weight="semibold" numberOfLines={1}>{item.title}</AppText>
+        {!!item.deadline && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Ionicons name="alarm-outline" size={12} color={colors.brandSecondary} />
+            <AppText size={type.sm} color={colors.brandSecondary} weight="semibold">Needed by {item.deadline}</AppText>
+          </View>
+        )}
         <View style={styles.metaRow}>
           <Avatar name={item.buyer?.name} size={18} />
           <AppText size={type.sm} color={colors.muted} numberOfLines={1} style={{ flex: 1 }}>{item.buyer?.name}</AppText>
@@ -110,21 +127,47 @@ export default function Trips() {
       {loading ? (
         <View style={styles.centerFill}><ActivityIndicator color={colors.brandPrimary} size="large" /></View>
       ) : tab === "Inbox" ? (
-        <FlatList
-          data={inbox}
-          keyExtractor={(i) => i.id}
-          renderItem={renderInbox}
-          contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: spacing["3xl"] }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={colors.brandPrimary} />}
-          ListEmptyComponent={
-            <EmptyState
-              testID="inbox-empty"
-              icon="mail-outline"
-              title="Your inbox is empty"
-              subtitle="Post a travel plan and requests matching your route will land here automatically."
-            />
-          }
-        />
+        <>
+          {plans.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroller}
+              contentContainerStyle={styles.filterRow}
+            >
+              <Pressable testID="inbox-filter-all" onPress={() => setPlanFilter("all")} style={[styles.filterChip, planFilter === "all" && styles.filterChipActive]}>
+                <Ionicons name="apps-outline" size={13} color={planFilter === "all" ? colors.onBrandPrimary : colors.onSurfaceTertiary} />
+                <AppText size={type.sm} weight="semibold" color={planFilter === "all" ? colors.onBrandPrimary : colors.onSurfaceTertiary}>All trips</AppText>
+              </Pressable>
+              {plans.map((p) => {
+                const active = planFilter === p.id;
+                return (
+                  <Pressable key={p.id} testID={`inbox-filter-${p.id}`} onPress={() => setPlanFilter(p.id)} style={[styles.filterChip, active && styles.filterChipActive]}>
+                    <Ionicons name="airplane" size={13} color={active ? colors.onBrandPrimary : colors.onSurfaceTertiary} />
+                    <AppText size={type.sm} weight="semibold" color={active ? colors.onBrandPrimary : colors.onSurfaceTertiary}>
+                      {p.fromCountry} → {p.toCountry}{p.departDate ? `  ·  ${p.departDate}` : ""}
+                    </AppText>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+          <FlatList
+            data={inboxView}
+            keyExtractor={(i) => i.id}
+            renderItem={renderInbox}
+            contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: spacing["3xl"] }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={colors.brandPrimary} />}
+            ListEmptyComponent={
+              <EmptyState
+                testID="inbox-empty"
+                icon="mail-outline"
+                title={planFilter === "all" ? "Your inbox is empty" : "No matches for this trip"}
+                subtitle="Post a travel plan and requests matching your route will land here automatically."
+              />
+            }
+          />
+        </>
       ) : (
         <FlatList
           data={plans}
@@ -164,6 +207,21 @@ const styles = StyleSheet.create({
   segment: { flexDirection: "row", backgroundColor: colors.surfaceTertiary, borderRadius: radius.md, padding: 3 },
   segBtn: { flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: radius.sm },
   segBtnActive: { backgroundColor: colors.brandPrimary },
+  filterScroller: { maxHeight: 56, flexGrow: 0 },
+  filterRow: { gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, alignItems: "center" },
+  filterChip: {
+    height: 36,
+    flexShrink: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceTertiary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterChipActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
   card: {
     flexDirection: "row",
     gap: spacing.md,

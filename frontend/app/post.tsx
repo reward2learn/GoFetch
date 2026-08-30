@@ -32,6 +32,7 @@ export default function PostRequest() {
   const [to, setTo] = useState<{ country: string; city: string } | null>(null);
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [deadline, setDeadline] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [picker, setPicker] = useState<null | "from" | "to">(null);
@@ -88,6 +89,7 @@ export default function PostRequest() {
         fromCity: from.city,
         toCountry: to.country,
         toCity: to.city,
+        deadline: deadline.trim() || null,
       });
       router.back();
     } catch (e: any) {
@@ -191,6 +193,9 @@ export default function PostRequest() {
               </View>
             </View>
           )}
+
+          <Label text="Needed by (optional)" />
+          <TextInput testID="deadline-input" placeholder="e.g. 2026-07-25" placeholderTextColor={colors.muted} value={deadline} onChangeText={setDeadline} style={styles.input} />
 
           {!!error && <AppText color={colors.error} size={type.sm} style={{ marginTop: spacing.md }}>{error}</AppText>}
         </ScrollView>

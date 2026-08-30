@@ -163,6 +163,7 @@ export default function RequestDetail() {
                       <AppText size={type.sm} weight="semibold">{req.buyer?.reputation?.toFixed(1) ?? "—"}</AppText>
                     </View>
                     <AppText size={type.sm} color={colors.muted}>{req.buyer?.ordersCompleted} orders</AppText>
+                    {req.buyer?.topTraveller && <Badge label="Top" tone="warning" icon="ribbon" />}
                   </View>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.muted} />

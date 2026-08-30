@@ -45,12 +45,13 @@ export default function Profile() {
             {verified && <Ionicons name="checkmark-circle" size={20} color={colors.brandPrimary} />}
           </View>
           <AppText color={colors.muted} size={type.sm}>{user.email}</AppText>
-          <View style={{ marginTop: spacing.sm }}>
+          <View style={{ marginTop: spacing.sm, flexDirection: "row", gap: spacing.sm, flexWrap: "wrap", justifyContent: "center" }}>
             <Badge
               label={verified ? "KYC Verified" : "Unverified"}
               tone={verified ? "success" : "warning"}
               icon={verified ? "shield-checkmark" : "alert-circle"}
             />
+            {user.topTraveller && <Badge label="Top Traveller" tone="warning" icon="ribbon" />}
           </View>
 
           <View style={styles.statsRow}>
@@ -112,6 +113,26 @@ export default function Profile() {
           </View>
         )}
 
+        <AppText weight="bold" size={type.lg} style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
+          Legal
+        </AppText>
+        <Card style={{ padding: 0 }}>
+          <Pressable testID="open-terms" onPress={() => router.push("/legal/terms")} style={styles.legalRow}>
+            <Ionicons name="document-text-outline" size={20} color={colors.brandPrimary} />
+            <AppText weight="semibold" style={{ flex: 1 }}>Terms & Conditions</AppText>
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          </Pressable>
+          <Divider />
+          <Pressable testID="open-privacy" onPress={() => router.push("/legal/privacy")} style={styles.legalRow}>
+            <Ionicons name="lock-closed-outline" size={20} color={colors.brandPrimary} />
+            <AppText weight="semibold" style={{ flex: 1 }}>Privacy Policy</AppText>
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          </Pressable>
+        </Card>
+        <AppText size={type.sm} color={colors.muted} style={{ marginTop: spacing.sm, textAlign: "center" }}>
+          {user.acceptedTerms ? "You accepted the Terms & Privacy Policy" : "Terms acceptance pending"}
+        </AppText>
+
         <Button testID="logout-button" title="Sign out" variant="outline" icon="log-out-outline" onPress={logout} style={{ marginTop: spacing.xl }} />
       </ScrollView>
     </View>
@@ -161,4 +182,5 @@ const styles = StyleSheet.create({
   protect: { flexDirection: "row", gap: spacing.md, alignItems: "center" },
   protectIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.brandTertiary, alignItems: "center", justifyContent: "center" },
   reviewTop: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  legalRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, padding: spacing.md },
 });

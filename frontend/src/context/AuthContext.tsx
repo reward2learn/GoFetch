@@ -19,7 +19,7 @@ export type User = {
 type AuthState = {
   user: User | null;
   loading: boolean;
-  login: (name: string, email: string) => Promise<void>;
+  login: (name: string, email: string, acceptedTerms?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   setUser: (u: User) => void;
@@ -52,8 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [refresh]);
 
-  const login = useCallback(async (name: string, email: string) => {
-    const data = await api.post("/auth/login", { name, email });
+  const login = useCallback(async (name: string, email: string, acceptedTerms = true) => {
+    const data = await api.post("/auth/login", { name, email, acceptedTerms });
     await storage.secureSet(TOKEN_KEY, data.token);
     setUserState(data.user);
   }, []);

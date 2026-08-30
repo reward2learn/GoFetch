@@ -32,6 +32,7 @@ export default function Explore() {
   const [q, setQ] = useState("");
   const [destOpen, setDestOpen] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
+  const [unread, setUnread] = useState(0);
 
   const load = useCallback(async () => {
     const params = new URLSearchParams();
@@ -50,6 +51,10 @@ export default function Explore() {
     try {
       const w = await api.get("/wallet");
       setBalance(w.balance);
+    } catch {}
+    try {
+      const c = await api.get("/notifications/unread-count");
+      setUnread(c.count);
     } catch {}
   }, [cat, dest, q]);
 
@@ -118,12 +123,22 @@ export default function Explore() {
               <Ionicons name="chevron-down" size={16} color={colors.onSurface} />
             </Pressable>
           </View>
-          <Pressable testID="wallet-chip" onPress={() => router.push("/(tabs)/wallet")} style={styles.walletChip}>
-            <Ionicons name="wallet" size={16} color={colors.brandPrimary} />
-            <AppText weight="bold" size={type.sm} color={colors.brandPrimary}>
-              {balance == null ? "Wallet" : usd(balance)}
-            </AppText>
-          </Pressable>
+          <View style={styles.headerRight}>
+            <Pressable testID="wallet-chip" onPress={() => router.push("/(tabs)/wallet")} style={styles.walletChip}>
+              <Ionicons name="wallet" size={16} color={colors.brandPrimary} />
+              <AppText weight="bold" size={type.sm} color={colors.brandPrimary}>
+                {balance == null ? "Wallet" : usd(balance)}
+              </AppText>
+            </Pressable>
+            <Pressable testID="alerts-bell" onPress={() => router.push("/notifications")} style={styles.bell}>
+              <Ionicons name="notifications-outline" size={22} color={colors.onSurface} />
+              {unread > 0 && (
+                <View style={styles.bellBadge}>
+                  <AppText weight="bold" size={10} color="#fff">{unread > 9 ? "9+" : unread}</AppText>
+                </View>
+              )}
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.searchWrap}>
@@ -273,6 +288,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     height: 40,
     borderRadius: radius.pill,
+  },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  bell: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceTertiary },
+  bellBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    borderRadius: 8,
+    backgroundColor: colors.brandSecondary,
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchWrap: {
     flexDirection: "row",

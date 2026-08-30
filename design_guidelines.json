@@ -1,0 +1,175 @@
+{
+  "app_name": "TrustMule",
+  "personality": "1 iOS-Native Clean",
+  "personality_one_liner": "A secure, premium, and globally-appealing marketplace where trust feels native and seamless, blending the stability of a tier-one bank with the sensory richness of international travel.",
+  "color": {
+    "surface": "#FCFBFA",
+    "onSurface": "#1C1C1E",
+    "surfaceSecondary": "#FFFFFF",
+    "onSurfaceSecondary": "#1C1C1E",
+    "surfaceTertiary": "#F2F0ED",
+    "onSurfaceTertiary": "#3A393B",
+    "surfaceInverse": "#1C1C1E",
+    "onSurfaceInverse": "#FFFFFF",
+    "brand": "#2A5A4A",
+    "brandPrimary": "#2A5A4A",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#C97A5E",
+    "onBrandSecondary": "#FFFFFF",
+    "brandTertiary": "#E7F0EC",
+    "onBrandTertiary": "#2A5A4A",
+    "success": "#30825B",
+    "onSuccess": "#FFFFFF",
+    "warning": "#F29C38",
+    "onWarning": "#1C1C1E",
+    "error": "#D94436",
+    "onError": "#FFFFFF",
+    "info": "#F2F0ED",
+    "onInfo": "#1C1C1E",
+    "border": "#E5E3E0",
+    "borderStrong": "#D1CCC5",
+    "divider": "#E5E3E0"
+  },
+  "typography": {
+    "displayFontFamily": "Plus Jakarta Sans",
+    "textFontFamily": "Plus Jakarta Sans",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous vertical breathing room. Cards and containers use comfortable padding (lg or xl). No edge-to-edge flushing for cards.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": 1,
+  "navigation": "bottom_tabs",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": true,
+    "do's": [
+      "Use glass on sticky headers over scrolling feeds.",
+      "Use glass on the bottom tab bar.",
+      "Use glass overlays on featured marketplace cards over hero images."
+    ],
+    "dont's": [
+      "Never apply glass to form inputs or standard list rows.",
+      "Never blur body text regions without a heavy tint layer behind it."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "ExploreFeed",
+      "purpose": "A scrollable marketplace to discover crowdsourced shopping requests with location filters.",
+      "states": {
+        "loading": "Skeleton grids mapping the card layout.",
+        "empty": "Illustration of a globe with a 'No requests found for this route' message and a 'Change Filters' primary CTA.",
+        "error": "Readable network error with a 'Retry' button."
+      },
+      "layout": "Header features a delivery destination selector, a search bar, and horizontal filter chips (pill radius, brandTertiary when active). Content is a 2-column grid of Request Cards (each taking 50% width minus gaps). Each card features a high-quality product image at the top (with gradient scrim if text overlays), item name, origin country, traveler reward amount (prominent), and buyer's initials/avatar. Include subtle shadow tier 1 on cards."
+    },
+    {
+      "name": "RequestDetail",
+      "purpose": "Provides full context on a shopping request so a traveler can confidently accept it and lock escrow.",
+      "states": {
+        "loading": "Spinner centered.",
+        "empty": "Not applicable (detail screen).",
+        "error": "Error loading details with a 'Go Back' CTA."
+      },
+      "layout": "Hero image of the requested product spanning the top 30% of the screen with a top-to-bottom gradient scrim. Overlaid text at the bottom of the image for Item Name and Reward. Below the hero: structured details (Origin, Destination, Buyer Trust Score/Reputation in a card). Sticky 'Accept & Escrow' button pinned at the bottom in a safe-area cleared glass container."
+    },
+    {
+      "name": "PostRequest",
+      "purpose": "A streamlined form for buyers to post a new shopping request and fund the smart-contract escrow.",
+      "states": {
+        "loading": "Spinner while posting to the blockchain/backend.",
+        "empty": "N/A",
+        "error": "Validation error or wallet connection error."
+      },
+      "layout": "Single-column form layout. Clear labels above inputs. Sections for 'Item Details', 'Origin Country', and a prominent slider for 'Traveler Reward (USDC)'. A sticky 'Fund Escrow & Post' button inside a KeyboardAvoidingView at the bottom."
+    },
+    {
+      "name": "OrderTracking",
+      "purpose": "A vertical timeline showing the escrow state and physical journey of the item.",
+      "states": {
+        "loading": "Skeleton of the timeline.",
+        "empty": "No active orders illustration.",
+        "error": "Could not fetch status with retry."
+      },
+      "layout": "Top section features an abstract map or airport terminal visual. Main body is a vertical stepper component detailing states: Agreed, Funded, Purchased, In Transit, Arrived, Handoff. Active step highlighted in brandPrimary. At the bottom, a sticky, floating information card showing Traveler details and quick actions (Chat, Cancel)."
+    },
+    {
+      "name": "USDCWallet",
+      "purpose": "A non-custodial wallet command center for viewing USDC balances, staked collateral, and transaction history.",
+      "states": {
+        "loading": "Skeleton over balance and transaction list.",
+        "empty": "Zero balance state with 'Deposit USDC' primary action.",
+        "error": "Wallet connection failure message."
+      },
+      "layout": "Fintech-standard layout. Top section uses surfaceSecondary with a large, highly legible balance and two primary action buttons (Deposit, Withdraw) in a row. Below is a structured, vertically scrolling list of transactions (escrow locks, releases, staking). Escrowed funds are shown with a 'Locked' status badge (warning/info colors)."
+    },
+    {
+      "name": "ChatAndHandoff",
+      "purpose": "Real-time communication with cryptographic QR handoff functionality.",
+      "states": {
+        "loading": "Loading chat history.",
+        "empty": "Start of conversation.",
+        "error": "Message send failure icon."
+      },
+      "layout": "Standard chat interface (bubbles). A persistent, sticky banner at the top (under the header) showing Escrow Status (e.g., 'USDC Locked in Escrow'). A prominent 'Scan QR to Complete' or 'Show QR' button accessible via a bottom sheet or a sticky FAB."
+    }
+  ],
+  "images": {
+    "marketplace_hero": {
+      "url": "https://images.unsplash.com/photo-1553619948-505cc1cdc320?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwxfHx0cmF2ZWwlMjBhaXJwb3J0JTIwdGVybWluYWx8ZW58MHx8fHwxNzg4MDQ0NjQ3fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Airport terminal looking out to an airplane, symbolizing global travel and delivery"
+    },
+    "sample_product_perfume": {
+      "url": "https://images.unsplash.com/photo-1458538977777-0549b2370168?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBwZXJmdW1lJTIwYm90dGxlfGVufDB8fHx8MTc4ODA0NDY0N3ww&ixlib=rb-4.1.0&q=85",
+      "alt": "Luxury glass perfume bottle"
+    },
+    "sample_product_headphones": {
+      "url": "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwxfHxzb255JTIwaGVhZHBob25lc3xlbnwwfHx8fDE3ODgwNDQ2NDd8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Black wireless Sony headphones"
+    },
+    "sample_product_sneakers": {
+      "url": "https://images.unsplash.com/photo-1600269452121-4f2416e55c28?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDZ8MHwxfHNlYXJjaHwxfHxuaWtlJTIwYWlyJTIwZm9yY2UlMjAxfGVufDB8fHx8MTc4ODA0NDY0N3ww&ixlib=rb-4.1.0&q=85",
+      "alt": "White Nike Air Force 1 sneaker"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Implement the '1 iOS-Native Clean' personality with a LIGHT theme to build trust. Avoid all dark/cyberpunk/Web3 aesthetics to keep the app reassuring to non-crypto natives.",
+    "Banned Colors: strictly avoid blue, navy, purple, or indigo. Use the provided Sage Green (brand) and Terracotta (brandSecondary).",
+    "Text over Image (CRITICAL): Apply a top-to-bottom vertical linear gradient scrim (transparent to >=70% surfaceInverse) on the RequestDetail hero image before placing white text on top.",
+    "Web Search Learnings - Order Tracking: Implement the order timeline as a vertical stepper (Placed -> Escrow Funded -> Purchased -> Traveling -> Arrived -> Handoff). Pin the traveler contact card at the bottom.",
+    "Web Search Learnings - Wallet: Prioritize visual clarity over blockchain jargon. The wallet must look like a standard neobank (large balances, clear transaction lists with distinct 'Locked in Escrow' status badges).",
+    "Sticky Primary CTAs: For screens like PostRequest and RequestDetail, ensure the primary action button is fixed at the bottom in a safe-area cleared container (use glassmorphism if overlapping scrollable content)."
+  ]
+}

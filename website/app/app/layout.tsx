@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { AppNavbar } from "@/components/layouts/AppNavbar";
@@ -11,21 +11,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { isConnected, status } = useAccount();
   const [checked, setChecked] = useState(false);
+  const hasChecked = useRef(false);
   const isLoading = status === "reconnecting" || status === "connecting";
 
-  // Only redirect on initial mount, not on every render
+  // Check auth ONLY on initial mount — do not re-run on isConnected changes
   useEffect(() => {
-    let cancelled = false;
+    if (hasChecked.current) return;
+    if (isLoading) return;
 
-    if (!isLoading) {
-      setChecked(true);
-      if (!isConnected && !cancelled) {
-        router.replace("/login");
-      }
+    hasChecked.current = true;
+    setChecked(true);
+
+    if (!isConnected) {
+      router.replace("/login");
     }
-
-    return () => { cancelled = true; };
-  }, [isConnected, isLoading, router]);
+  }, [isLoading, isConnected, router]);
 
   // Show loading only during initial wallet reconnection
   if (!checked && isLoading) {

@@ -39,12 +39,11 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, router]);
 
-  // Track when wallet FIRST connects (not on page reload)
+  // Track when wallet FIRST connects — but NOT if user already has a valid session
+  // (they just disconnected intentionally, don't auto-resign)
   useEffect(() => {
-    if (isConnected && !wasConnected.current) {
+    if (isConnected && !wasConnected.current && !isAuthenticated) {
       wasConnected.current = true;
-      // Wallet just connected — trigger sign-in after a short delay
-      // to let wagmi fully initialize
       const timer = setTimeout(() => {
         if (!hasSignedIn.current && !isAuthenticated) {
           triggerSignIn();
@@ -52,9 +51,9 @@ export default function LoginPage() {
       }, 500);
       return () => clearTimeout(timer);
     }
-    if (!isConnected) {
-      wasConnected.current = false;
-    }
+    // IMPORTANT: Do NOT reset wasConnected to false when disconnected.
+    // Once the user has connected in this session, we don't auto-re-trigger.
+    // They must click "Try Again" or reload to start a fresh sign-in.
   }, [isConnected, isAuthenticated]);
 
   const triggerSignIn = useCallback(async () => {

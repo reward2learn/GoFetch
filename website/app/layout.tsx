@@ -28,7 +28,7 @@ export default function RootLayout({
               (function() {
                 if (typeof window === "undefined") return;
 
-                // 1. Block WalletConnect analytics endpoint (pulse.walletconnect.org)
+                // 1. Block analytics/telemetry endpoints
                 //    The SDK captures fetch early, so we override it before anything else.
                 var origFetch = window.fetch;
                 window.fetch = function() {
@@ -37,7 +37,9 @@ export default function RootLayout({
                     : (arguments[0] instanceof Request)
                       ? arguments[0].url
                       : (arguments[0] && arguments[0].href) || "";
-                  if (url.indexOf("pulse.walletconnect.org") !== -1) {
+                  if (url.indexOf("pulse.walletconnect.org") !== -1 ||
+                      url.indexOf("cca-lite.coinbase.com") !== -1 ||
+                      url.indexOf("experimental-analytics.coinbase.com") !== -1) {
                     return Promise.resolve(new Response("{}"));
                   }
                   return origFetch.apply(this, arguments);

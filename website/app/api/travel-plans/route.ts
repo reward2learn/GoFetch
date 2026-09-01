@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const travelPlan = await prisma.travelPlan.create({
       data: {
         tenantSlug: "default",
-        travelerId: session.userId,
+        userId: session.userId,
         fromCountry,
         fromCity,
         toCountry,
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
         departDate: departDate ? new Date(departDate) : null,
         returnDate: returnDate ? new Date(returnDate) : null,
         capacity: capacity || 5,
-        notes: notes || null,
+        note: notes || null,
         status: "active",
       },
     });

@@ -35,7 +35,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Travel plan not found" }, { status: 404 });
     }
 
-    if (plan.travelerId !== session.userId) {
+    if (plan.userId !== session.userId) {
       return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 

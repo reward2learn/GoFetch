@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
         fromCity,
         toCountry,
         toCity,
-        departDate: departDate ? new Date(departDate) : null,
+        departDate: departDate ? new Date(departDate) : new Date(),
         returnDate: returnDate ? new Date(returnDate) : null,
         capacity: capacity || 5,
         note: notes || null,

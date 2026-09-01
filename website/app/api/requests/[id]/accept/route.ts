@@ -34,7 +34,7 @@ export async function POST(
         requestId: id,
         travelerId: session.userId,
         buyerId: request.buyerId,
-        status: "accepted",
+        status: "offered",
         itemPrice: request.itemPrice,
         reward: request.reward,
       },
@@ -43,7 +43,7 @@ export async function POST(
     // Update request status
     await prisma.request.update({
       where: { id },
-      data: { status: "accepted" },
+      data: { status: "in_progress" },
     });
 
     return NextResponse.json(order, { status: 201 });

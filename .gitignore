@@ -3,7 +3,9 @@
 # IDE and editors
 .idea/
 .vscode/
-
+.opencode/
+.cursor/
+.emergent/
 # Dependencies
 node_modules/
 /node_modules

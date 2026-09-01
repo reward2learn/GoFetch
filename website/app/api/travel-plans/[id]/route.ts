@@ -1,0 +1,48 @@
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/db";
+import { getSession } from "@/lib/auth";
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const plan = await prisma.travelPlan.findUnique({ where: { id } });
+    if (!plan) {
+      return NextResponse.json({ error: "Travel plan not found" }, { status: 404 });
+    }
+    return NextResponse.json(plan);
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch travel plan" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    const plan = await prisma.travelPlan.findUnique({ where: { id } });
+    if (!plan) {
+      return NextResponse.json({ error: "Travel plan not found" }, { status: 404 });
+    }
+
+    if (plan.travelerId !== session.userId) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+
+    await prisma.travelPlan.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[travel-plans DELETE]", error);
+    return NextResponse.json({ error: "Failed to delete travel plan" }, { status: 500 });
+  }
+}

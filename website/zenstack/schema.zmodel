@@ -1,0 +1,384 @@
+// GoFetch — ZenStack schema
+// P2P Global Marketplace with Smart Contract Escrow
+// Introspection-first: @@map to existing Neon tables
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../../src/generated/prisma"
+  binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]
+}
+
+// ── Enums ──────────────────────────────────────────────────────────────────────
+
+enum AuthTier {
+  public
+  pin
+  wallet
+}
+
+enum UserRole {
+  buyer
+  traveler
+  arbitrator
+  admin
+}
+
+enum KycStatus {
+  none
+  pending
+  verified
+  rejected
+}
+
+enum RequestStatus {
+  open
+  in_progress
+  completed
+  cancelled
+}
+
+enum OrderStatus {
+  offered
+  agreed
+  funded
+  purchased
+  in_transit
+  arrived
+  handoff_pending
+  completed
+  cancelled
+  disputed
+  refunded
+  released
+}
+
+enum TravelPlanStatus {
+  active
+  completed
+  cancelled
+}
+
+enum DisputeStatus {
+  open
+  under_review
+  resolved
+  dismissed
+}
+
+enum TransactionType {
+  deposit
+  withdrawal
+  escrow_fund
+  escrow_release
+  escrow_refund
+  reward_payout
+  service_fee
+  stake
+  stake_refund
+}
+
+// ── Auth Context ───────────────────────────────────────────────────────────────
+
+/// JWT session context
+type Auth {
+  id    String    @id @default("session")
+  tier  AuthTier
+  sub   String?
+  email String?
+  @@auth
+}
+
+// ── Models ─────────────────────────────────────────────────────────────────────
+
+/// User accounts — buyers, travelers, arbitrators, admins
+model User {
+  id              String      @id @default(uuid()) @db.Uuid
+  tenantSlug      String      @default("default") @map("tenant_slug")
+  email           String?     @unique
+  name            String?
+  avatarUrl       String?     @map("avatar_url")
+  bio             String?
+  walletAddress   String      @unique @map("wallet_address")
+  kycStatus       KycStatus   @default(none) @map("kyc_status")
+  role            UserRole    @default(buyer)
+
+  // Reputation & stats
+  reputation       Decimal    @default(0) @db.Decimal(3, 2)
+  reviewsCount     Int        @default(0) @map("reviews_count")
+  ordersCompleted  Int        @default(0) @map("orders_completed")
+  tripsCompleted   Int        @default(0) @map("trips_completed")
+
+  // Wallet balances (USDC on-chain)
+  usdcBalance     Decimal     @default(0) @db.Decimal(20, 6) @map("usdc_balance")
+  lockedBalance   Decimal     @default(0) @db.Decimal(20, 6) @map("locked_balance")
+
+  // Auth
+  token           String      @unique
+  acceptedTermsAt DateTime?   @map("accepted_terms_at")
+
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  requests                Request[]
+  buyerOrders             Order[]               @relation("BuyerOrders")
+  travelerOrders          Order[]               @relation("TravelerOrders")
+  travelPlans             TravelPlan[]
+  sentMessages            ChatMessage[]         @relation("SentMessages")
+  givenReviews            Review[]              @relation("GivenReviews")
+  receivedReviews         Review[]              @relation("ReceivedReviews")
+  initiatedDisputes       Dispute[]             @relation("InitiatedDisputes")
+  resolvedDisputes        Dispute[]             @relation("ResolvedDisputes")
+  transactions            Transaction[]
+  notifications           Notification[]
+
+  @@index([walletAddress])
+  @@index([role])
+  @@index([kycStatus])
+  @@map("users")
+}
+
+/// Purchase requests from buyers
+model Request {
+  id            String          @id @default(uuid()) @db.Uuid
+  tenantSlug    String          @default("default") @map("tenant_slug")
+  buyerId       String          @map("buyer_id") @db.Uuid
+  title         String
+  description   String?
+  category      String?
+  imageUrl      String?         @map("image_url")
+
+  // Pricing
+  itemPrice       Decimal       @db.Decimal(20, 2) @map("item_price")
+  maxItemPrice    Decimal?      @db.Decimal(20, 2) @map("max_item_price")
+  reward          Decimal       @db.Decimal(20, 2)
+
+  // Route
+  fromCountry     String        @map("from_country")
+  fromCity        String        @map("from_city")
+  toCountry       String        @map("to_country")
+  toCity          String        @map("to_city")
+
+  deadline        DateTime?
+  status          RequestStatus @default(open)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  deletedAt       DateTime?     @map("deleted_at")
+
+  // Relations
+  buyer           User          @relation(fields: [buyerId], references: [id])
+  orders          Order[]
+  notifications   Notification[]
+
+  @@index([buyerId])
+  @@index([status])
+  @@index([fromCountry, toCountry])
+  @@index([deadline])
+  @@map("requests")
+}
+
+/// Orders linking buyers and travelers with escrow
+model Order {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantSlug      String        @default("default") @map("tenant_slug")
+  requestId       String        @map("request_id") @db.Uuid
+  buyerId         String        @map("buyer_id") @db.Uuid
+  travelerId      String?       @map("traveler_id") @db.Uuid
+  status          OrderStatus   @default(offered)
+
+  // Pricing
+  itemPrice       Decimal       @db.Decimal(20, 2) @map("item_price")
+  reward          Decimal       @db.Decimal(20, 2)
+  proposedFee     Decimal?      @db.Decimal(20, 2) @map("proposed_fee")
+  serviceFee      Decimal?      @db.Decimal(20, 2) @map("service_fee")
+  stake           Decimal       @default(0) @db.Decimal(20, 2)
+
+  // Platform fees
+  platformFeePct  Decimal       @default(0) @db.Decimal(3, 2) @map("platform_fee_pct")
+  platformFee     Decimal       @default(0) @db.Decimal(20, 2) @map("platform_fee")
+  payout          Decimal       @default(0) @db.Decimal(20, 2)
+
+  // State flags
+  buyerFunded     Boolean       @default(false) @map("buyer_funded")
+  travelerStaked  Boolean       @default(false) @map("traveler_staked")
+
+  // Delivery proof
+  receiptUrl      String?       @map("receipt_url")
+  receiptHash     String?       @map("receipt_hash")
+  qrHash          String?       @map("qr_hash")
+  note            String?
+
+  // Timeline as JSON array
+  timeline        Json          @default("[]")
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  request         Request       @relation(fields: [requestId], references: [id])
+  buyer           User          @relation("BuyerOrders", fields: [buyerId], references: [id])
+  traveler        User?         @relation("TravelerOrders", fields: [travelerId], references: [id])
+  chatMessages    ChatMessage[]
+  reviews         Review[]
+  disputes        Dispute[]
+  transactions    Transaction[]
+  notifications   Notification[]
+
+  @@index([requestId])
+  @@index([buyerId])
+  @@index([travelerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+/// Travel plans posted by travelers
+model TravelPlan {
+  id            String            @id @default(uuid()) @db.Uuid
+  tenantSlug    String            @default("default") @map("tenant_slug")
+  userId        String            @map("user_id") @db.Uuid
+
+  // Route
+  fromCountry   String            @map("from_country")
+  fromCity      String            @map("from_city")
+  toCountry     String            @map("to_country")
+  toCity        String            @map("to_city")
+
+  departDate    DateTime          @map("depart_date")
+  returnDate    DateTime?         @map("return_date")
+  note          String?
+  capacity      Int               @default(1)
+  status        TravelPlanStatus  @default(active)
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  // Relations
+  user          User              @relation(fields: [userId], references: [id])
+  notifications Notification[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([departDate])
+  @@index([fromCountry, toCountry])
+  @@map("travel_plans")
+}
+
+/// Chat messages within an order
+model ChatMessage {
+  id            String      @id @default(uuid()) @db.Uuid
+  tenantSlug    String      @default("default") @map("tenant_slug")
+  orderId       String      @map("order_id") @db.Uuid
+  senderId      String      @map("sender_id") @db.Uuid
+  text          String
+  imageUrl      String?     @map("image_url")
+
+  // JSON array of user IDs who have read this message
+  readBy        Json        @default("[]") @map("read_by")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  order         Order       @relation(fields: [orderId], references: [id])
+  sender        User        @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([orderId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@map("chat_messages")
+}
+
+/// Reviews left by users after order completion
+model Review {
+  id            String      @id @default(uuid()) @db.Uuid
+  tenantSlug    String      @default("default") @map("tenant_slug")
+  orderId       String      @map("order_id") @db.Uuid
+  reviewerId    String      @map("reviewer_id") @db.Uuid
+  revieweeId    String      @map("reviewee_id") @db.Uuid
+  rating        Int         // 1-5
+  comment       String?
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  order         Order       @relation(fields: [orderId], references: [id])
+  reviewer      User        @relation("GivenReviews", fields: [reviewerId], references: [id])
+  reviewee      User        @relation("ReceivedReviews", fields: [revieweeId], references: [id])
+
+  @@index([orderId])
+  @@index([reviewerId])
+  @@index([revieweeId])
+  @@map("reviews")
+}
+
+/// Disputes initiated by buyers or travelers
+model Dispute {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantSlug      String        @default("default") @map("tenant_slug")
+  orderId         String        @map("order_id") @db.Uuid
+  initiatorId     String        @map("initiator_id") @db.Uuid
+  reason          String
+  evidence        Json          @default("[]")
+  status          DisputeStatus @default(open)
+  resolution      String?
+  resolvedById    String?       @map("resolved_by_id") @db.Uuid
+  resolvedAt      DateTime?     @map("resolved_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  order           Order         @relation(fields: [orderId], references: [id])
+  initiator       User          @relation("InitiatedDisputes", fields: [initiatorId], references: [id])
+  resolvedBy      User?         @relation("ResolvedDisputes", fields: [resolvedById], references: [id])
+
+  @@index([orderId])
+  @@index([initiatorId])
+  @@index([status])
+  @@map("disputes")
+}
+
+/// Ledger of all USDC transactions
+model Transaction {
+  id            String          @id @default(uuid()) @db.Uuid
+  tenantSlug    String          @default("default") @map("tenant_slug")
+  userId        String          @map("user_id") @db.Uuid
+  type          TransactionType
+  amount        Decimal         @db.Decimal(20, 6)
+  orderId       String?         @map("order_id") @db.Uuid
+  note          String?
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  // Relations
+  user          User            @relation(fields: [userId], references: [id])
+  order         Order?          @relation(fields: [orderId], references: [id])
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+/// In-app notifications
+model Notification {
+  id            String      @id @default(uuid()) @db.Uuid
+  tenantSlug    String      @default("default") @map("tenant_slug")
+  userId        String      @map("user_id") @db.Uuid
+  type          String
+  title         String
+  body          String?
+  requestId     String?     @map("request_id") @db.Uuid
+  planId        String?     @map("plan_id") @db.Uuid
+  orderId       String?     @map("order_id") @db.Uuid
+  read          Boolean     @default(false)
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  user          User        @relation(fields: [userId], references: [id])
+  request       Request?    @relation(fields: [requestId], references: [id])
+  plan          TravelPlan? @relation(fields: [planId], references: [id])
+  order         Order?      @relation(fields: [orderId], references: [id])
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@map("notifications")
+}

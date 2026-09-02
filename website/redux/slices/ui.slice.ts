@@ -12,6 +12,7 @@ export interface UIState {
     timestamp: number;
   }>;
   searchQuery: string;
+  notificationDrawerOpen: boolean;
 }
 
 const initialState: UIState = {
@@ -21,6 +22,7 @@ const initialState: UIState = {
   modalContent: null,
   notifications: [],
   searchQuery: "",
+  notificationDrawerOpen: false,
 };
 
 const uiSlice = createSlice({
@@ -67,6 +69,12 @@ const uiSlice = createSlice({
     setSearchQuery: (state, action: PayloadAction<string>) => {
       state.searchQuery = action.payload;
     },
+    openNotificationDrawer: (state) => {
+      state.notificationDrawerOpen = true;
+    },
+    closeNotificationDrawer: (state) => {
+      state.notificationDrawerOpen = false;
+    },
   },
 });
 
@@ -80,6 +88,8 @@ export const {
   removeNotification,
   clearNotifications,
   setSearchQuery,
+  openNotificationDrawer,
+  closeNotificationDrawer,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

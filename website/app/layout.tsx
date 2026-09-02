@@ -39,7 +39,8 @@ export default function RootLayout({
                       : (arguments[0] && arguments[0].href) || "";
                   if (url.indexOf("pulse.walletconnect.org") !== -1 ||
                       url.indexOf("cca-lite.coinbase.com") !== -1 ||
-                      url.indexOf("experimental-analytics.coinbase.com") !== -1) {
+                      url.indexOf("experimental-analytics.coinbase.com") !== -1 ||
+                      url.indexOf("api.toaster.magic.link") !== -1) {
                     return Promise.resolve(new Response("{}"));
                   }
                   return origFetch.apply(this, arguments);

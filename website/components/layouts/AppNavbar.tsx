@@ -5,12 +5,13 @@ import { useAccount } from "wagmi";
 import { ConnectButton } from "@/components/web3/ConnectButton";
 import { BellIcon, SearchIcon } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { setSearchQuery } from "@/redux/slices/ui.slice";
+import { setSearchQuery, openNotificationDrawer } from "@/redux/slices/ui.slice";
 
 export function AppNavbar() {
   const { address } = useAccount();
   const dispatch = useAppDispatch();
   const searchQuery = useAppSelector((s) => s.ui.searchQuery);
+  const notificationDrawerOpen = useAppSelector((s) => s.ui.notificationDrawerOpen);
   const [searchOpen, setSearchOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +81,10 @@ export function AppNavbar() {
             <SearchIcon className="h-5 w-5 text-muted" />
           </button>
         )}
-        <button className="p-2 hover:bg-surface-tertiary rounded-lg transition-colors relative">
+        <button 
+          onClick={() => dispatch(openNotificationDrawer())}
+          className="p-2 hover:bg-surface-tertiary rounded-lg transition-colors relative"
+        >
           <BellIcon className="h-5 w-5 text-muted" />
           <span className="absolute top-1 right-1 h-2 w-2 bg-secondary-300 rounded-full"></span>
         </button>

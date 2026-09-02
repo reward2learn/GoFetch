@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { walletDisconnected } from "@/redux/slices/auth.slice";
 import {
   setAppKitReady,
   setConnectDropdownOpen,
@@ -45,7 +46,14 @@ export function ConnectButton() {
             {address.slice(0, 6)}...{address.slice(-4)}
           </span>
         </div>
-        <Button variant="outline" size="sm" onClick={() => disconnect()}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            dispatch(walletDisconnected());
+            disconnect();
+          }}
+        >
           Disconnect
         </Button>
       </div>

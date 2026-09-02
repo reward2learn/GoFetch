@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useBalance } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -10,6 +10,7 @@ import { formatAddress } from "@/lib/utils";
 
 export default function WalletPage() {
   const { address } = useAccount();
+  const { data: ethBalance } = useBalance({ address });
   const [balance, setBalance] = useState("0.00");
   const [lockedBalance, setLockedBalance] = useState("0.00");
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -97,7 +98,10 @@ export default function WalletPage() {
       <Card className="bg-gradient-to-br from-brand-primary to-brand-400 text-white">
         <div className="text-center">
           <p className="text-white/80 mb-2">Total Balance</p>
-          <p className="text-4xl font-bold mb-4">{balance} USDC</p>
+          <p className="text-4xl font-bold mb-1">{balance} USDC</p>
+          <p className="text-lg text-white/70 mb-4">
+            {ethBalance ? `${parseFloat(ethBalance.formatted).toFixed(4)} ETH` : "0.0000 ETH"}
+          </p>
           <p className="text-sm text-white/60 mb-6">
             Wallet: {address ? formatAddress(address) : "Not connected"}
           </p>
@@ -105,7 +109,7 @@ export default function WalletPage() {
             <Button variant="secondary" onClick={() => setShowDeposit(true)}>Deposit</Button>
             <Button
               variant="outline"
-              className="border-white text-white hover:bg-white/10"
+              className="!bg-transparent !text-white !border-white hover:!bg-white/10"
               onClick={() => setShowWithdraw(true)}
             >
               Withdraw

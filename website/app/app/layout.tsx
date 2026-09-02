@@ -1,34 +1,45 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { AppNavbar } from "@/components/layouts/AppNavbar";
 import { AppSidebar } from "@/components/layouts/AppSidebar";
 import { BottomNav } from "@/components/layouts/BottomNav";
+import { NotificationDrawer } from "@/components/notifications/NotificationDrawer";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { isConnected, status } = useAccount();
   const [checked, setChecked] = useState(false);
-  const hasChecked = useRef(false);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
   const isLoading = status === "reconnecting" || status === "connecting";
 
-  // Check auth ONLY on initial mount — do not re-run on isConnected changes
+  // Wait for the initial reconnection attempt to complete before making auth decisions
   useEffect(() => {
-    if (hasChecked.current) return;
-    if (isLoading) return;
+    if (initialCheckDone) return;
 
-    hasChecked.current = true;
-    setChecked(true);
+    // Still reconnecting — wait
+    if (status === "reconnecting" || status === "connecting") return;
+
+    // Reconnection attempt finished (either connected or disconnected)
+    setInitialCheckDone(true);
+  }, [status, initialCheckDone]);
+
+  // Auth check — only runs after initial check is done
+  useEffect(() => {
+    if (!initialCheckDone) return;
+    if (isLoading) return;
 
     if (!isConnected) {
       router.replace("/login");
+    } else {
+      setChecked(true);
     }
-  }, [isLoading, isConnected, router]);
+  }, [initialCheckDone, isConnected, isLoading, router]);
 
   // Show loading only during initial wallet reconnection
-  if (!checked && isLoading) {
+  if (!initialCheckDone || (!checked && isLoading)) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
@@ -56,6 +67,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Bottom nav — mobile only */}
       <BottomNav />
+
+      {/* Notification drawer */}
+      <NotificationDrawer />
     </div>
   );
 }

@@ -280,8 +280,20 @@ export default function ExplorePage() {
       )}
 
       {/* Post Request Modal */}
-      <Modal isOpen={showPostModal} onClose={() => { resetForm(); setShowPostModal(false); }} title="Post a Request">
-        <form onSubmit={handlePostRequest} className="space-y-3">
+      <Modal
+        isOpen={showPostModal}
+        onClose={() => { resetForm(); setShowPostModal(false); }}
+        title="Post a Request"
+        footer={
+          <>
+            <button type="button" onClick={() => { resetForm(); setShowPostModal(false); }} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+            <button type="submit" form="post-request-form" disabled={posting} className="px-4 py-2 text-sm bg-green-700 text-white rounded-lg font-medium hover:bg-green-800 disabled:opacity-50">
+              {posting ? "Posting..." : "Post Request"}
+            </button>
+          </>
+        }
+      >
+        <form id="post-request-form" onSubmit={handlePostRequest} className="space-y-3">
           {/* 1. Product URL — first field */}
           <Input
             label="Product URL (optional)"
@@ -447,12 +459,6 @@ export default function ExplorePage() {
           </div>
 
           {postError && <p className="text-sm text-red-600">{postError}</p>}
-          <div className="flex gap-2 justify-end pt-2">
-            <button type="button" onClick={() => { resetForm(); setShowPostModal(false); }} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-            <button type="submit" disabled={posting} className="px-4 py-2 text-sm bg-green-700 text-white rounded-lg font-medium hover:bg-green-800 disabled:opacity-50">
-              {posting ? "Posting..." : "Post Request"}
-            </button>
-          </div>
         </form>
       </Modal>
     </div>

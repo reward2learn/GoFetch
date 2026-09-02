@@ -9,10 +9,11 @@ interface ModalProps {
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
   className?: string;
 }
 
-export function Modal({ isOpen, onClose, title, children, className }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, footer, className }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,12 +44,14 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
     >
       <div
         className={cn(
-          "bg-surface-1 rounded-lg shadow-xl w-full max-w-md animate-in fade-in zoom-in-95",
+          "bg-surface-1 rounded-lg shadow-xl w-full max-w-md animate-in fade-in zoom-in-95 flex flex-col",
           className
         )}
+        style={{ maxHeight: "calc(86vh - 44px)" }}
       >
+        {/* Header — fixed ~61px */}
         {title && (
-          <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center justify-between px-4 py-4 border-b border-border shrink-0">
             <h2 className="text-lg font-semibold">{title}</h2>
             <button
               onClick={onClose}
@@ -58,7 +61,18 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
             </button>
           </div>
         )}
-        <div className="p-4">{children}</div>
+
+        {/* Body — scrollable */}
+        <div className="flex-1 overflow-auto p-4" style={{ maxHeight: "calc(86vh - 162px)" }}>
+          {children}
+        </div>
+
+        {/* Footer — fixed ~61px */}
+        {footer && (
+          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border shrink-0">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

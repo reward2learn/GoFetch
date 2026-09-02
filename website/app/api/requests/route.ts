@@ -5,11 +5,21 @@ import { getSession } from "@/lib/auth";
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const category = searchParams.get("category");
+    const categories = searchParams.get("categories");
     const q = searchParams.get("q");
+    const sort = searchParams.get("sort") || "newest";
 
     const where: any = { status: "open" };
-    if (category && category !== "All") where.category = category;
+
+    // Multi-category filter
+    if (categories) {
+      const cats = categories.split(",").filter(c => c && c !== "All");
+      if (cats.length > 0) {
+        where.category = { in: cats };
+      }
+    }
+
+    // Search filter
     if (q) {
       where.OR = [
         { title: { contains: q, mode: "insensitive" } },
@@ -17,9 +27,28 @@ export async function GET(req: NextRequest) {
       ];
     }
 
+    // Sort
+    let orderBy: any = { createdAt: "desc" };
+    switch (sort) {
+      case "price_asc":
+        orderBy = { itemPrice: "asc" };
+        break;
+      case "price_desc":
+        orderBy = { itemPrice: "desc" };
+        break;
+      case "reward_asc":
+        orderBy = { reward: "asc" };
+        break;
+      case "reward_desc":
+        orderBy = { reward: "desc" };
+        break;
+      default:
+        orderBy = { createdAt: "desc" };
+    }
+
     const requests = await prisma.request.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy,
       take: 50,
       include: {
         buyer: { select: { id: true, name: true } },
@@ -41,7 +70,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, description, category, itemPrice, maxItemPrice, reward, fromCountry, fromCity, toCountry, toCity, deadline } = body;
+    const { title, description, category, imageUrl, productUrl, itemPrice, maxItemPrice, reward, fromCountry, fromCity, toCountry, toCity, deadline } = body;
 
     if (!title || !itemPrice || !reward || !fromCountry || !fromCity || !toCountry || !toCity) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -54,6 +83,8 @@ export async function POST(req: NextRequest) {
         title,
         description: description || null,
         category: category || "Other",
+        imageUrl: imageUrl || null,
+        productUrl: productUrl || null,
         itemPrice: parseFloat(itemPrice),
         maxItemPrice: maxItemPrice ? parseFloat(maxItemPrice) : null,
         reward: parseFloat(reward),

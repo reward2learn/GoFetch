@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { v4 as uuid } from "uuid";
 
 // Simple in-memory nonce store (production: use Redis or DB)
 const nonces = new Map<string, { nonce: string; expiresAt: number; address: string }>();
 
 const NONCE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function generateNonce(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid address" }, { status: 400 });
     }
 
-    const nonce = uuid();
+    const nonce = generateNonce();
     const expiresAt = Date.now() + NONCE_TTL_MS;
     
     // Store nonce keyed by address
@@ -27,6 +32,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ nonce });
   } catch (error) {
+    console.error("[nonce POST]", error);
     return NextResponse.json({ error: "Failed to generate nonce" }, { status: 500 });
   }
 }

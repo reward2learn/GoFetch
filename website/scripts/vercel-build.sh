@@ -11,7 +11,7 @@ fi
 
 # 1. Generate Prisma client
 echo "📦 Generating Prisma client..."
-npx prisma generate --schema=zenstack/prisma/schema.prisma
+npx prisma generate
 
 # 2. Build Next.js app
 echo "🔨 Building Next.js app..."

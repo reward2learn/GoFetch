@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { walletDisconnected } from "@/redux/slices/auth.slice";
+import { walletConnected, walletDisconnected } from "@/redux/slices/auth.slice";
 import {
   setAppKitReady,
   setConnectDropdownOpen,
@@ -26,6 +26,9 @@ export function ConnectButton() {
   // Sync wagmi account state into Redux on every change
   useEffect(() => {
     dispatch(syncWagmiAccount({ address, isConnected }));
+    if (isConnected && address) {
+      dispatch(walletConnected(address));
+    }
   }, [address, isConnected, dispatch]);
 
   // Initialize AppKit on mount — only succeeds if projectId is valid

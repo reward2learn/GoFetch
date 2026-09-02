@@ -11,6 +11,7 @@ export interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  sessionChecked: boolean;
   walletConnected: boolean;
   walletAddress: string | null;
   error: string | null;
@@ -21,15 +22,37 @@ const initialState: AuthState = {
   token: null,
   isAuthenticated: false,
   isLoading: false,
+  sessionChecked: false,
   walletConnected: false,
   walletAddress: null,
   error: null,
 };
 
 /**
+ * Check existing JWT session cookie on mount.
+ * If valid → set user + isAuthenticated + sessionChecked.
+ * If invalid → set sessionChecked only.
+ */
+export const checkSession = createAsyncThunk<
+  { user: AuthState["user"] },
+  void,
+  { rejectValue: string }
+>(
+  "auth/checkSession",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (!res.ok) return rejectWithValue("No session");
+      const user = await res.json();
+      return { user };
+    } catch {
+      return rejectWithValue("No session");
+    }
+  }
+);
+
+/**
  * Sign-in thunk: nonce → SIWE signature → verify → JWT.
- * Handles AbortController + timeout internally.
- * Dispatched by the login page or ConnectButton when wallet connects.
  */
 export const signInWithWallet = createAsyncThunk<
   { user: AuthState["user"]; token: string },
@@ -77,9 +100,7 @@ export const signInWithWallet = createAsyncThunk<
   }
 );
 
-export const logout = createAsyncThunk("auth/logout", async () => {
-  return true;
-});
+export const logout = createAsyncThunk("auth/logout", async () => true);
 
 const authSlice = createSlice({
   name: "auth",
@@ -118,6 +139,22 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // checkSession
+      .addCase(checkSession.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(checkSession.fulfilled, (state, action) => {
+        state.user = action.payload.user;
+        state.isAuthenticated = true;
+        state.isLoading = false;
+        state.sessionChecked = true;
+      })
+      .addCase(checkSession.rejected, (state) => {
+        state.isLoading = false;
+        state.sessionChecked = true;
+      })
+      // signInWithWallet
       .addCase(signInWithWallet.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -129,10 +166,12 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload as string;
       })
+      // logout
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
+        state.sessionChecked = false;
         state.walletConnected = false;
         state.walletAddress = null;
       });

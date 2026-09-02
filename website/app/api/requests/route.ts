@@ -8,6 +8,8 @@ export async function GET(req: NextRequest) {
     const categories = searchParams.get("categories");
     const q = searchParams.get("q");
     const sort = searchParams.get("sort") || "newest";
+    const fromCountry = searchParams.get("fromCountry") || "";
+    const toCountry = searchParams.get("toCountry") || "";
 
     const where: any = { status: "open" };
 
@@ -25,6 +27,14 @@ export async function GET(req: NextRequest) {
         { title: { contains: q, mode: "insensitive" } },
         { description: { contains: q, mode: "insensitive" } },
       ];
+    }
+
+    // Country filters
+    if (fromCountry) {
+      where.fromCountry = { contains: fromCountry, mode: "insensitive" };
+    }
+    if (toCountry) {
+      where.toCountry = { contains: toCountry, mode: "insensitive" };
     }
 
     // Sort
@@ -70,7 +80,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, description, category, imageUrl, productUrl, itemPrice, maxItemPrice, reward, fromCountry, fromCity, toCountry, toCity, deadline } = body;
+    const { title, description, category, imageUrl, productUrl, itemPrice, maxItemPrice, reward, fromCountry, fromCity, toCountry, toCity, deadline, deliveryType, pickupLocation, pickupInstructions } = body;
 
     if (!title || !itemPrice || !reward || !fromCountry || !fromCity || !toCountry || !toCity) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -93,6 +103,9 @@ export async function POST(req: NextRequest) {
         toCountry,
         toCity,
         deadline: deadline ? new Date(deadline) : null,
+        deliveryType: (deliveryType as "standard" | "click_and_collect") || "standard",
+        pickupLocation: pickupLocation || null,
+        pickupInstructions: pickupInstructions || null,
         status: "open",
       },
     });

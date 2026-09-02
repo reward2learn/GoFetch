@@ -62,6 +62,9 @@ export default function RequestDetailPage() {
       title: request.title || "",
       description: request.description || "",
       category: request.category || "Other",
+      deliveryType: request.deliveryType || "standard",
+      pickupLocation: request.pickupLocation || "",
+      pickupInstructions: request.pickupInstructions || "",
       itemPrice: request.itemPrice || "",
       reward: request.reward || "",
       fromCountry: request.fromCountry || "",
@@ -178,6 +181,30 @@ export default function RequestDetailPage() {
                 </div>
               </div>
               <div>
+                <label className="block text-sm font-medium mb-1">Delivery Type</label>
+                <select value={editForm.deliveryType} onChange={(e) => setEditForm({ ...editForm, deliveryType: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700">
+                  <option value="standard">Standard Delivery</option>
+                  <option value="click_and_collect">Click & Collect</option>
+                </select>
+              </div>
+              {editForm.deliveryType === "click_and_collect" && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Pickup Location</label>
+                    <input type="text" value={editForm.pickupLocation} onChange={(e) => setEditForm({ ...editForm, pickupLocation: e.target.value })}
+                      placeholder="e.g. Central Station Locker B12"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Pickup Instructions</label>
+                    <textarea value={editForm.pickupInstructions} onChange={(e) => setEditForm({ ...editForm, pickupInstructions: e.target.value })} rows={2}
+                      placeholder="e.g. Ask for the package at the front desk"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
+                  </div>
+                </>
+              )}
+              <div>
                 <label className="block text-sm font-medium mb-1">Delivery Reward (USDC)</label>
                 <input type="number" value={editForm.reward} onChange={(e) => setEditForm({ ...editForm, reward: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
@@ -221,22 +248,54 @@ export default function RequestDetailPage() {
           </Card>
         ) : (
           <Card className="p-6">
+            {request.deliveryType === "click_and_collect" && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium mb-2">
+                ✈️ Click & Collect
+              </div>
+            )}
             <h1 className="text-2xl font-bold mb-4">{request.title}</h1>
             
             {request.description && (
               <p className="text-muted mb-6">{request.description}</p>
             )}
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="p-3 bg-surface-tertiary rounded-lg">
-                <p className="text-xs text-muted mb-1">Item Price</p>
-                <p className="text-lg font-semibold">{formatCurrency(request.itemPrice)}</p>
-              </div>
-              <div className="p-3 bg-surface-tertiary rounded-lg">
-                <p className="text-xs text-muted mb-1">Delivery Reward</p>
-                <p className="text-lg font-semibold text-brand-primary">+{formatCurrency(request.reward)}</p>
-              </div>
-            </div>
+            {request.deliveryType === "click_and_collect" ? (
+              <>
+                {/* Pickup Location */}
+                {request.pickupLocation && (
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                    <p className="text-sm font-medium text-blue-800 mb-1">📍 Pickup Location</p>
+                    <p className="text-sm text-blue-700">{request.pickupLocation}</p>
+                  </div>
+                )}
+                
+                {/* Pickup Instructions */}
+                {request.pickupInstructions && (
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+                    <p className="text-sm font-medium text-amber-800 mb-1">📋 Pickup Instructions</p>
+                    <p className="text-sm text-amber-700">{request.pickupInstructions}</p>
+                  </div>
+                )}
+                
+                {/* Pickup Fee */}
+                <div className="flex items-center justify-between p-4 bg-surface rounded-xl">
+                  <span className="text-sm text-muted">Pickup Fee</span>
+                  <span className="text-lg font-bold text-brand-primary">+{formatCurrency(parseFloat(request.reward?.toString() || "0"))}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Standard Delivery Pricing */}
+                <div className="flex items-center justify-between p-4 bg-surface rounded-xl">
+                  <span className="text-sm text-muted">Item Price</span>
+                  <span className="text-lg font-bold">{formatCurrency(parseFloat(request.itemPrice?.toString() || "0"))}</span>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-surface rounded-xl">
+                  <span className="text-sm text-muted">Delivery Reward</span>
+                  <span className="text-lg font-bold text-brand-primary">+{formatCurrency(parseFloat(request.reward?.toString() || "0"))}</span>
+                </div>
+              </>
+            )}
 
             <div className="space-y-3 text-sm">
               <div className="flex justify-between py-2 border-b border-border">

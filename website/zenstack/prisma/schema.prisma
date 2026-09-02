@@ -81,6 +81,11 @@ enum TransactionType {
   stake_refund
 }
 
+enum DeliveryType {
+  standard
+  click_and_collect
+}
+
 /// User accounts — buyers, travelers, arbitrators, admins
 model User {
   id                String         @id() @default(uuid()) @db.Uuid()
@@ -122,28 +127,31 @@ model User {
 
 /// Purchase requests from buyers
 model Request {
-  id            String         @id() @default(uuid()) @db.Uuid()
-  tenantSlug    String         @default("default") @map("tenant_slug")
-  buyerId       String         @map("buyer_id") @db.Uuid()
-  title         String
-  description   String?
-  category      String?
-  imageUrl      String?        @map("image_url")
-  productUrl    String?        @map("product_url")
-  itemPrice     Decimal        @map("item_price") @db.Decimal(20, 2)
-  maxItemPrice  Decimal?       @map("max_item_price") @db.Decimal(20, 2)
-  reward        Decimal        @db.Decimal(20, 2)
-  fromCountry   String         @map("from_country")
-  fromCity      String         @map("from_city")
-  toCountry     String         @map("to_country")
-  toCity        String         @map("to_city")
-  deadline      DateTime?
-  status        RequestStatus  @default(open)
-  createdAt     DateTime       @default(now()) @map("created_at")
-  deletedAt     DateTime?      @map("deleted_at")
-  buyer         User           @relation(fields: [buyerId], references: [id])
-  orders        Order[]
-  notifications Notification[]
+  id                 String         @id() @default(uuid()) @db.Uuid()
+  tenantSlug         String         @default("default") @map("tenant_slug")
+  buyerId            String         @map("buyer_id") @db.Uuid()
+  title              String
+  description        String?
+  category           String?
+  imageUrl           String?        @map("image_url")
+  productUrl         String?        @map("product_url")
+  deliveryType       DeliveryType   @default(standard) @map("delivery_type")
+  pickupLocation     String?        @map("pickup_location")
+  pickupInstructions String?        @map("pickup_instructions")
+  itemPrice          Decimal        @map("item_price") @db.Decimal(20, 2)
+  maxItemPrice       Decimal?       @map("max_item_price") @db.Decimal(20, 2)
+  reward             Decimal        @db.Decimal(20, 2)
+  fromCountry        String         @map("from_country")
+  fromCity           String         @map("from_city")
+  toCountry          String         @map("to_country")
+  toCity             String         @map("to_city")
+  deadline           DateTime?
+  status             RequestStatus  @default(open)
+  createdAt          DateTime       @default(now()) @map("created_at")
+  deletedAt          DateTime?      @map("deleted_at")
+  buyer              User           @relation(fields: [buyerId], references: [id])
+  orders             Order[]
+  notifications      Notification[]
 
   @@index([buyerId])
   @@index([status])

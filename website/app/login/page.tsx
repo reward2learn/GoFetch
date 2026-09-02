@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useEffect } from "react";
 import { useAccount, useSignMessage } from "wagmi";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
@@ -9,11 +9,10 @@ import dynamic from "next/dynamic";
 import { isReownConfigured, initAppKit } from "@/lib/web3/config";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import {
+  checkSession,
   signInWithWallet,
-  walletConnected,
-  walletDisconnected,
+  clearError,
 } from "@/redux/slices/auth.slice";
-import { useEffect } from "react";
 
 const ConnectButton = dynamic(
   () => import("@/components/web3/ConnectButton").then((m) => m.ConnectButton),
@@ -26,37 +25,30 @@ export default function LoginPage() {
   const { signMessageAsync } = useSignMessage();
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { isAuthenticated, isLoading: authLoading, error: authError, walletConnected: reduxWalletConnected } = useAppSelector((s) => s.auth);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const signInInitiated = useRef(false);
+  const {
+    isAuthenticated,
+    isLoading: authLoading,
+    sessionChecked,
+    error: authError,
+    walletConnected: reduxWalletConnected,
+  } = useAppSelector((s) => s.auth);
 
-  // Initialize AppKit (technical, not auth logic)
+  // Initialize AppKit
   useEffect(() => {
     initAppKit();
   }, []);
 
-  // Derive sign-in state from Redux — no useEffect needed
-  const shouldSignIn = reduxWalletConnected && !isAuthenticated && !authLoading && !signInInitiated.current;
-  const displayError = authError || localError;
-
-  // Trigger sign-in when Redux state says we should
-  // This is the ONLY useEffect for auth — it reacts to Redux state, not raw wallet events
+  // Check existing session on mount
   useEffect(() => {
-    if (!shouldSignIn || !address) return;
+    dispatch(checkSession());
+  }, [dispatch]);
 
-    signInInitiated.current = true;
-    dispatch(signInWithWallet({ address, signMessageAsync }));
-  }, [shouldSignIn, address, signMessageAsync, dispatch]);
-
-  // Sync wallet state to Redux — single source of truth
+  // Trigger SIWE sign-in when wallet is connected and session check is done
   useEffect(() => {
-    if (isConnected && address) {
-      dispatch(walletConnected(address));
-    } else if (!isConnected) {
-      dispatch(walletDisconnected());
-      signInInitiated.current = false;
+    if (sessionChecked && reduxWalletConnected && address && !isAuthenticated && !authLoading) {
+      dispatch(signInWithWallet({ address, signMessageAsync }));
     }
-  }, [isConnected, address, dispatch]);
+  }, [sessionChecked, reduxWalletConnected, address, isAuthenticated, authLoading, dispatch, signMessageAsync]);
 
   // Redirect on successful auth
   useEffect(() => {
@@ -65,14 +57,10 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, router]);
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      // safety net — the thunk handles its own timeout
-    };
-  }, []);
-
-  if (isAuthenticated) return null;
+  // Derive what to show
+  const showChecking = !sessionChecked;
+  const showSigning = sessionChecked && authLoading && !isAuthenticated;
+  const showConnect = sessionChecked && !authLoading && !isAuthenticated;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-0">
@@ -85,7 +73,12 @@ export default function LoginPage() {
         </div>
 
         <div className="mb-6">
-          {authLoading ? (
+          {showChecking ? (
+            <div className="flex flex-col items-center gap-3">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-primary"></div>
+              <p className="text-sm text-text-secondary">Checking session...</p>
+            </div>
+          ) : showSigning ? (
             <div className="flex flex-col items-center gap-3">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-primary"></div>
               <p className="text-sm text-text-secondary">Signing in...</p>
@@ -100,18 +93,14 @@ export default function LoginPage() {
           )}
         </div>
 
-        {displayError && (
+        {authError && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-700">{displayError}</p>
+            <p className="text-sm text-red-700">{authError}</p>
             <Button
               variant="outline"
               size="sm"
               className="mt-2"
-              onClick={() => {
-                setLocalError(null);
-                signInInitiated.current = false;
-                dispatch({ type: "auth/clearError" });
-              }}
+              onClick={() => dispatch(clearError())}
             >
               Try Again
             </Button>

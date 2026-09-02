@@ -53,7 +53,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { title, description, category, itemPrice, maxItemPrice, reward, fromCountry, fromCity, toCountry, toCity, deadline } = body;
+    const { title, description, category, itemPrice, maxItemPrice, reward, fromCountry, fromCity, toCountry, toCity, deadline, deliveryType, pickupLocation, pickupInstructions } = body;
 
     const updated = await prisma.request.update({
       where: { id },
@@ -69,6 +69,9 @@ export async function PUT(
         ...(toCountry !== undefined && { toCountry }),
         ...(toCity !== undefined && { toCity }),
         ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
+        ...(deliveryType !== undefined && { deliveryType: (deliveryType as "standard" | "click_and_collect") || "standard" }),
+        ...(pickupLocation !== undefined && { pickupLocation: pickupLocation || null }),
+        ...(pickupInstructions !== undefined && { pickupInstructions: pickupInstructions || null }),
       },
     });
 

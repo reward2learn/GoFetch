@@ -1,45 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { AppNavbar } from "@/components/layouts/AppNavbar";
 import { AppSidebar } from "@/components/layouts/AppSidebar";
 import { BottomNav } from "@/components/layouts/BottomNav";
 import { NotificationDrawer } from "@/components/notifications/NotificationDrawer";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { checkSession } from "@/redux/slices/auth.slice";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { isConnected, status } = useAccount();
-  const [checked, setChecked] = useState(false);
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
-  const isLoading = status === "reconnecting" || status === "connecting";
+  const dispatch = useAppDispatch();
+  const { isConnected } = useAccount();
+  const { isAuthenticated, sessionChecked, isLoading } = useAppSelector((s) => s.auth);
 
-  // Wait for the initial reconnection attempt to complete before making auth decisions
+  // Check session on mount — single source of truth
   useEffect(() => {
-    if (initialCheckDone) return;
+    dispatch(checkSession());
+  }, [dispatch]);
 
-    // Still reconnecting — wait
-    if (status === "reconnecting" || status === "connecting") return;
-
-    // Reconnection attempt finished (either connected or disconnected)
-    setInitialCheckDone(true);
-  }, [status, initialCheckDone]);
-
-  // Auth check — only runs after initial check is done
+  // Redirect to login if session check done and not authenticated
   useEffect(() => {
-    if (!initialCheckDone) return;
-    if (isLoading) return;
-
-    if (!isConnected) {
+    if (sessionChecked && !isAuthenticated) {
       router.replace("/login");
-    } else {
-      setChecked(true);
     }
-  }, [initialCheckDone, isConnected, isLoading, router]);
+  }, [sessionChecked, isAuthenticated, router]);
 
-  // Show loading only during initial wallet reconnection
-  if (!initialCheckDone || (!checked && isLoading)) {
+  // Loading state while checking session
+  if (!sessionChecked || (isLoading && !isAuthenticated)) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
@@ -47,8 +37,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If checked and not connected, show nothing (redirect is happening)
-  if (checked && !isConnected) {
+  // Not authenticated — redirect in progress
+  if (!isAuthenticated) {
     return null;
   }
 

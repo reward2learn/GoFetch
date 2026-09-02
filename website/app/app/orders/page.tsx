@@ -42,7 +42,7 @@ function getStatusColor(status: string): { label: string; color: string } {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"all" | "buying" | "traveling">("all");
+  const [tab, setTab] = useState<"all" | "requests" | "deliveries">("all");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -68,8 +68,8 @@ export default function OrdersPage() {
   }, []);
 
   const filtered = orders.filter((o: any) => {
-    if (tab === "buying") return o.role === "buyer";
-    if (tab === "traveling") return o.role === "traveler";
+    if (tab === "requests") return o.role === "buyer";
+    if (tab === "deliveries") return o.role === "traveler";
     return true;
   });
 
@@ -79,7 +79,7 @@ export default function OrdersPage() {
 
       {/* Pill tabs */}
       <div className="flex gap-2">
-        {(["all", "buying", "traveling"] as const).map((t) => (
+        {(["all", "requests", "deliveries"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -115,22 +115,25 @@ export default function OrdersPage() {
               <path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
             </svg>
           </div>
-          <p className="font-semibold text-gray-800 mb-1">No orders yet</p>
-          <p className="text-sm text-gray-500">Accept a request as a traveller, or post one as a buyer, to start an escrow-protected order.</p>
+          <p className="font-semibold text-gray-800 mb-1">No orders or requests yet</p>
+          <p className="text-sm text-gray-500">Post a request as a buyer, or accept one as a traveller, to start an escrow-protected order.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.map((order: any) => {
-            const img = order.request?.imageUrl || CATEGORY_IMAGES[order.request?.category || "Other"] || CATEGORY_IMAGES.Other;
+            const img = order.imageUrl || order.request?.imageUrl || CATEGORY_IMAGES[order.request?.category || "Other"] || CATEGORY_IMAGES.Other;
             const status1 = getStatusColor(order.status);
             const title = order.request?.title || `Order #${order.id.slice(0, 8)}`;
             const partnerName = order.travelerName || order.buyerName || "Unknown";
             const partnerInitials = partnerName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
             const price = parseFloat(order.itemPrice || "0");
+            const reward = parseFloat(order.reward || "0");
             // Second status badge (e.g., Cancelled, Offer sent)
             let status2: { label: string; color: string } | null = null;
             if (order.status === "cancelled") status2 = { label: "Cancelled", color: "red" };
             else if (order.status === "offer_sent") status2 = { label: "Offer sent", color: "orange" };
+            // For open requests, show "Waiting for Traveler" badge
+            const isWaiting = order.type === "request" && order.status === "open";
 
             return (
               <div key={order.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100">
@@ -143,9 +146,16 @@ export default function OrdersPage() {
                   <div className="flex items-center gap-1.5 mb-1">
                     <StatusBadge {...status1} />
                     {status2 && <StatusBadge {...status2} />}
+                    {isWaiting && <StatusBadge label="⏳ Waiting for Traveler" color="orange" />}
                   </div>
                   {/* Title */}
                   <h3 className="font-semibold text-sm truncate">{title}</h3>
+                  {/* Click & Collect badge */}
+                  {order.type === "request" && order.request?.deliveryType === "click_and_collect" && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                      ✈️ Click & Collect
+                    </span>
+                  )}
                   {/* Partner + Price */}
                   <div className="flex items-center justify-between mt-1">
                     <div className="flex items-center gap-1.5">
@@ -154,8 +164,17 @@ export default function OrdersPage() {
                       </span>
                       <span className="text-xs text-gray-500 truncate">{partnerName}</span>
                     </div>
-                    <span className="text-sm font-bold shrink-0">{formatCurrency(price)}</span>
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-bold">{formatCurrency(price)}</div>
+                      {reward > 0 && <div className="text-xs text-green-600">+{formatCurrency(reward)}</div>}
+                    </div>
                   </div>
+                  {/* Pickup location for Click & Collect */}
+                  {order.request?.deliveryType === "click_and_collect" && order.request?.pickupLocation && (
+                    <p className="text-xs text-blue-600 mt-1 truncate">
+                      📍 {order.request.pickupLocation}
+                    </p>
+                  )}
                 </div>
               </div>
             );

@@ -348,9 +348,55 @@ async function main() {
         status: "completed",
       },
     }),
+    // Click & Collect request 1 — iPhone from Sydney airport
+    prisma.request.create({
+      data: {
+        buyerId: alice.id,
+        title: "iPhone 17 Pro Max from Heinemann Sydney",
+        description:
+          "Already purchased iPhone 17 Pro Max 256GB from Heinemann Duty Free online. Just need someone to collect from the Departures shop and deliver to Bali.",
+        category: "Electronics",
+        imageUrl: IMAGES.phone,
+        deliveryType: "click_and_collect",
+        pickupLocation:
+          "Heinemann Departures Shop, Sydney Airport — Pick Up counter immediately after Security Screening, far right next to Travel Accessories",
+        pickupInstructions:
+          "Order #HWN-2026-88421. Have order confirmation email, passport, and boarding pass ready. Collect from the Pick Up counter.",
+        fromCity: "Sydney",
+        fromCountry: "Australia",
+        toCity: "Bali",
+        toCountry: "Indonesia",
+        itemPrice: 0,
+        reward: 45,
+        status: "open",
+      },
+    }),
+    // Click & Collect request 2 — Perfume from Gold Coast airport
+    prisma.request.create({
+      data: {
+        buyerId: grace.id,
+        title: "Chanel No. 5 from Heinemann Gold Coast",
+        description:
+          "Purchased Chanel No. 5 EDP 100ml from Heinemann Arrivals. Need pickup from Gold Coast Airport and delivery to Sydney.",
+        category: "Beauty",
+        imageUrl: IMAGES.perfume,
+        deliveryType: "click_and_collect",
+        pickupLocation:
+          "Heinemann Arrivals Shop, Gold Coast Airport — Pick Up counter at Cashier",
+        pickupInstructions:
+          "Order #HWN-2026-91205. Have order confirmation email and passport ready.",
+        fromCity: "Gold Coast",
+        fromCountry: "Australia",
+        toCity: "Sydney",
+        toCountry: "Australia",
+        itemPrice: 0,
+        reward: 25,
+        status: "open",
+      },
+    }),
   ]);
 
-  console.log("✅ Created 12 requests");
+  console.log("✅ Created 14 requests");
 
   // ── Travel Plans ───────────────────────────────────────────────────────────
   await prisma.travelPlan.createMany({

@@ -28,6 +28,7 @@ interface RequestCardProps {
     toCity?: string;
     toCountry?: string;
     status: string;
+    deliveryType?: string;
   };
 }
 
@@ -49,6 +50,12 @@ export function RequestCard({ request }: RequestCardProps) {
           <span className="absolute top-3 left-3 text-xs font-medium px-2 py-1 bg-white/90 backdrop-blur-sm rounded-full text-gray-700 shadow-sm">
             {request.category || "Other"}
           </span>
+          {/* Delivery type badge */}
+          {request.deliveryType === "click_and_collect" && (
+            <span className="absolute top-3 left-3 mt-8 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+              ✈️ Click & Collect
+            </span>
+          )}
           {/* Reward badge */}
           <span className="absolute top-3 right-3 text-xs font-bold px-2 py-1 bg-brand-primary text-white rounded-full shadow-sm">
             +{formatCurrency(request.reward)}

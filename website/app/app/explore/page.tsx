@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setSearchQuery } from "@/redux/slices/ui.slice";
 import { COUNTRIES, getCitiesForCountry } from "@/lib/data/airports";
-import { ChevronDown, Check, Upload, X } from "lucide-react";
+import { ChevronDown, Check, Upload, X, Sparkles } from "lucide-react";
 
 const ALL_CATEGORIES = ["Beauty", "Electronics", "Fashion", "Food", "Other"];
 const SORT_OPTIONS = [
@@ -23,6 +23,9 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("newest");
+  const [deliveryTypeFilter, setDeliveryTypeFilter] = useState<"all" | "standard" | "click_and_collect">("all");
+  const [filterFromCountry, setFilterFromCountry] = useState("");
+  const [filterToCountry, setFilterToCountry] = useState("");
   const [catDropdownOpen, setCatDropdownOpen] = useState(false);
   const catDropdownRef = useRef<HTMLDivElement>(null);
   const searchQuery = useAppSelector((s) => s.ui.searchQuery);
@@ -44,6 +47,14 @@ export default function ExplorePage() {
   const [fromCity, setFromCity] = useState("");
   const [toCountry, setToCountry] = useState("");
   const [toCity, setToCity] = useState("");
+  const [scraping, setScraping] = useState(false);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("Other");
+  const [deliveryType, setDeliveryType] = useState<"standard" | "click_and_collect">("standard");
+  const [pickupLocation, setPickupLocation] = useState("");
+  const [pickupInstructions, setPickupInstructions] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fromCities = fromCountry ? getCitiesForCountry(fromCountry) : [];
@@ -84,6 +95,11 @@ export default function ExplorePage() {
         }
         if (searchQuery) params.append("q", searchQuery);
         if (sortBy !== "newest") params.append("sort", sortBy);
+        if (deliveryTypeFilter !== "all") {
+          params.append("deliveryType", deliveryTypeFilter);
+        }
+        if (filterFromCountry) params.append("fromCountry", filterFromCountry);
+        if (filterToCountry) params.append("toCountry", filterToCountry);
         const res = await fetch(`/api/requests?${params.toString()}`, { signal: controller.signal });
         if (!res.ok) { if (!ignore) setRequests([]); return; }
         const data = await res.json();
@@ -98,7 +114,7 @@ export default function ExplorePage() {
 
     fetchRequests();
     return () => { ignore = true; controller.abort(); };
-  }, [selectedCategories, searchQuery, sortBy, refreshKey]);
+  }, [selectedCategories, searchQuery, sortBy, filterFromCountry, filterToCountry, deliveryTypeFilter, refreshKey]);
 
   const toggleCategory = (cat: string) => {
     setSelectedCategories((prev) => {
@@ -134,7 +150,40 @@ export default function ExplorePage() {
     setFromCity("");
     setToCountry("");
     setToCity("");
-    setPostError(null);
+    setTitle("");
+    setDescription("");
+    setCategory("Other");
+    setDeliveryType("standard");
+    setPickupLocation("");
+    setPickupInstructions("");
+    setScrapeError(null);
+  };
+
+  const handleScrape = async () => {
+    if (!productUrl) return;
+    setScraping(true);
+    setScrapeError(null);
+    try {
+      const res = await fetch("/api/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: productUrl }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to scrape URL");
+      }
+      const data = await res.json();
+      if (data.title) setTitle(data.title);
+      if (data.description) setDescription(data.description);
+      if (data.category) setCategory(data.category);
+      if (data.imageUrl) setImageUrl(data.imageUrl);
+      if (data.price) setItemPrice(data.price);
+    } catch (err) {
+      setScrapeError(err instanceof Error ? err.message : "Failed to scrape URL");
+    } finally {
+      setScraping(false);
+    }
   };
 
   const handlePostRequest = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -152,7 +201,10 @@ export default function ExplorePage() {
           productUrl: productUrl || null,
           imageUrl: imageUrl || null,
           category: form.get("category"),
-          itemPrice: itemPrice,
+          deliveryType,
+          itemPrice: deliveryType === "click_and_collect" ? "0.00" : itemPrice,
+          pickupLocation: deliveryType === "click_and_collect" ? pickupLocation : undefined,
+          pickupInstructions: deliveryType === "click_and_collect" ? pickupInstructions : undefined,
           reward: reward,
           fromCountry,
           fromCity,
@@ -252,7 +304,57 @@ export default function ExplorePage() {
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
+
+        {/* Delivery Type Filter */}
+        <select
+          value={deliveryTypeFilter}
+          onChange={(e) => setDeliveryTypeFilter(e.target.value as "all" | "standard" | "click_and_collect")}
+          className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-700"
+        >
+          <option value="all">All Types</option>
+          <option value="standard">Standard Delivery</option>
+          <option value="click_and_collect">Click & Collect</option>
+        </select>
+
+        {/* Country Filters */}
+        <select
+          value={filterFromCountry}
+          onChange={(e) => setFilterFromCountry(e.target.value)}
+          className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-700"
+        >
+          <option value="">From Country</option>
+          {COUNTRIES.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
+        <select
+          value={filterToCountry}
+          onChange={(e) => setFilterToCountry(e.target.value)}
+          className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-700"
+        >
+          <option value="">To Country</option>
+          {COUNTRIES.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
+        {(filterFromCountry || filterToCountry) && (
+          <button
+            onClick={() => { setFilterFromCountry(""); setFilterToCountry(""); }}
+            className="text-sm text-green-700 hover:underline"
+          >
+            Clear Countries
+          </button>
+        )}
       </div>
+
+      {/* Results count */}
+      {!loading && (
+        <p className="text-sm text-gray-500">
+          {requests.length} {requests.length === 1 ? "request" : "requests"} found
+        </p>
+      )}
 
       {/* Grid */}
       {loading ? (
@@ -295,13 +397,29 @@ export default function ExplorePage() {
       >
         <form id="post-request-form" onSubmit={handlePostRequest} className="space-y-3">
           {/* 1. Product URL — first field */}
-          <Input
-            label="Product URL (optional)"
-            name="productUrl"
-            value={productUrl}
-            onChange={(e) => setProductUrl(e.target.value)}
-            placeholder="https://store.example.com/product..."
-          />
+          <div>
+            <label className="block text-sm font-medium mb-1">Product URL (optional)</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                name="productUrl"
+                value={productUrl}
+                onChange={(e) => setProductUrl(e.target.value)}
+                placeholder="https://store.example.com/product..."
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+              />
+              <button
+                type="button"
+                onClick={handleScrape}
+                disabled={!productUrl || scraping}
+                className="flex items-center gap-1.5 px-3 py-2 bg-brand-primary text-white rounded-lg text-sm font-medium hover:bg-brand-400 disabled:opacity-50 transition-colors whitespace-nowrap"
+              >
+                <Sparkles className="h-4 w-4" />
+                {scraping ? "Scraping..." : "Generate"}
+              </button>
+            </div>
+            {scrapeError && <p className="text-xs text-red-600 mt-1">{scrapeError}</p>}
+          </div>
 
           {/* 2. Image upload */}
           <div>
@@ -346,51 +464,134 @@ export default function ExplorePage() {
           </div>
 
           {/* 3. Title */}
-          <Input label="Title" name="title" placeholder="e.g., Nike Air Max from London" required />
+          <Input label="Title" name="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Nike Air Max from London" required />
 
           {/* 4. Description */}
           <div>
             <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea name="description" rows={2} placeholder="Optional details..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
+            <textarea name="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Optional details..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
           </div>
 
-          {/* 5. Category + Price */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Category</label>
-              <select name="category" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700">
-                <option value="Beauty">Beauty</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Fashion">Fashion</option>
-                <option value="Food">Food</option>
-                <option value="Other">Other</option>
-              </select>
+          {/* 5. Category */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Category</label>
+            <select name="category" value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700">
+              <option value="Beauty">Beauty</option>
+              <option value="Electronics">Electronics</option>
+              <option value="Fashion">Fashion</option>
+              <option value="Food">Food</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          {/* 6. Delivery Type */}
+          <div className="space-y-1">
+            <label className="block text-sm font-medium">Delivery Type</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDeliveryType("standard")}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                  deliveryType === "standard"
+                    ? "bg-brand-primary text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                📦 Standard Delivery
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeliveryType("click_and_collect")}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                  deliveryType === "click_and_collect"
+                    ? "bg-brand-primary text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                ✈️ Click & Collect
+              </button>
             </div>
-            <Input
-              label="Item Price (USDC)"
-              name="itemPrice"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              value={itemPrice}
-              onChange={(e) => setItemPrice(e.target.value)}
-              required
-            />
           </div>
 
-          {/* 6. Reward — auto-calculated */}
-          <Input
-            label="Delivery Reward (USDC)"
-            name="reward"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="10% of price"
-            value={reward}
-            onChange={(e) => setReward(e.target.value)}
-            required
-          />
+          {/* 7. Conditional fields based on delivery type */}
+          {deliveryType === "standard" ? (
+            <>
+              {/* Standard Delivery Fields */}
+              <Input
+                label="Item Price (USDC)"
+                name="itemPrice"
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*\.?[0-9]*"
+                placeholder="0.00"
+                value={itemPrice}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9.]/g, "");
+                  const parts = val.split(".");
+                  if (parts.length > 2) return;
+                  setItemPrice(val);
+                }}
+                required
+              />
+              <Input
+                label="Delivery Reward (USDC)"
+                name="reward"
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*\.?[0-9]*"
+                placeholder="10% of price"
+                value={reward}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9.]/g, "");
+                  const parts = val.split(".");
+                  if (parts.length > 2) return;
+                  setReward(val);
+                }}
+                required
+              />
+            </>
+          ) : (
+            <>
+              {/* Click & Collect Fields */}
+              <Input
+                label="Pickup Location"
+                name="pickupLocation"
+                type="text"
+                placeholder="e.g., Heinemann Departures Shop, Sydney Airport"
+                value={pickupLocation}
+                onChange={(e) => setPickupLocation(e.target.value)}
+                required
+              />
+              <div className="space-y-1">
+                <label className="block text-sm font-medium">Pickup Instructions</label>
+                <textarea
+                  name="pickupInstructions"
+                  placeholder="e.g., Order #12345, have confirmation email + passport + boarding pass ready"
+                  value={pickupInstructions}
+                  onChange={(e) => setPickupInstructions(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary transition-colors text-sm"
+                  required
+                />
+              </div>
+              <Input
+                label="Pickup Fee (USDC)"
+                name="reward"
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*\.?[0-9]*"
+                placeholder="0.00"
+                value={reward}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9.]/g, "");
+                  const parts = val.split(".");
+                  if (parts.length > 2) return;
+                  setReward(val);
+                }}
+                required
+              />
+            </>
+          )}
 
           {/* 7. From Country → City */}
           <div className="grid grid-cols-2 gap-3">

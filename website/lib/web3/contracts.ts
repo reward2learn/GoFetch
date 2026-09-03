@@ -110,7 +110,7 @@ export const ESCROW_ABI = [
   },
 ] as const;
 
-export const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS || "0x036CbD53842c5426634c722303754C762b5cB287";
+export const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS || "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
 
 export const USDC_ABI = [
   {

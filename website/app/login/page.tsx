@@ -66,7 +66,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-surface-0">
       <Card className="w-full max-w-md p-8 text-center">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-brand-primary">GoFetch</h1>
+          <h1 className="text-3xl font-bold text-primary-color">GoFetch</h1>
           <p className="text-text-secondary mt-2">
             P2P Global Shopping &amp; Delivery
           </p>
@@ -75,12 +75,12 @@ export default function LoginPage() {
         <div className="mb-6">
           {showChecking ? (
             <div className="flex flex-col items-center gap-3">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-primary"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
               <p className="text-sm text-text-secondary">Checking session...</p>
             </div>
           ) : showSigning ? (
             <div className="flex flex-col items-center gap-3">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-primary"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
               <p className="text-sm text-text-secondary">Signing in...</p>
             </div>
           ) : (
@@ -94,8 +94,8 @@ export default function LoginPage() {
         </div>
 
         {authError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-700">{authError}</p>
+          <div className="mb-4 p-3 bg-error border border-error rounded-lg">
+            <p className="text-sm text-error">{authError}</p>
             <Button
               variant="outline"
               size="sm"
@@ -108,14 +108,14 @@ export default function LoginPage() {
         )}
 
         {!configured && (
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-left">
-            <p className="text-xs font-semibold text-yellow-800 mb-1">
+          <div className="mt-4 p-3 bg-warning border border-warning rounded-lg text-left">
+            <p className="text-xs font-semibold text-warning mb-1">
               ⚠️ Reown Project ID not configured
             </p>
-            <p className="text-xs text-yellow-700">
-              Add to <code className="bg-yellow-100 px-1 rounded">.env.local</code>:
+            <p className="text-xs text-warning">
+              Add to <code className="bg-warning px-1 rounded">.env.local</code>:
             </p>
-            <code className="block mt-1 text-xs bg-yellow-100 p-2 rounded">
+            <code className="block mt-1 text-xs bg-warning p-2 rounded">
               NEXT_PUBLIC_REOWN_PROJECT_ID=your-project-id
             </code>
           </div>

@@ -97,6 +97,7 @@ model User {
   walletAddress     String         @unique() @map("wallet_address")
   kycStatus         KycStatus      @default(none) @map("kyc_status")
   role              UserRole       @default(buyer)
+  theme             String?        @default("system")
   reputation        Decimal        @default(0) @db.Decimal(3, 2)
   reviewsCount      Int            @default(0) @map("reviews_count")
   ordersCompleted   Int            @default(0) @map("orders_completed")
@@ -330,4 +331,13 @@ model Notification {
   @@index([read])
   @@index([createdAt])
   @@map("notifications")
+}
+
+/// Global app settings (key-value store for theme, config, etc.)
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
 }

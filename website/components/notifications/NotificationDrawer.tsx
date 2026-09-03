@@ -100,13 +100,13 @@ export function NotificationDrawer() {
         aria-label="Notifications"
         aria-modal="true"
         className={cn(
-          "fixed right-0 top-0 z-50 flex h-full w-80 flex-col bg-white shadow-xl transition-transform duration-300 ease-in-out",
+          "fixed right-0 top-0 z-50 flex h-full w-80 flex-col bg-surface-1 shadow-xl transition-transform duration-300 ease-in-out",
           notificationDrawerOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-4">
-          <h2 className="text-lg font-semibold text-brand-primary">
+          <h2 className="text-lg font-semibold text-primary-color">
             Notifications
           </h2>
           <div className="flex items-center gap-2">
@@ -141,7 +141,7 @@ export function NotificationDrawer() {
               return (
                 <li
                   key={notification.id}
-                  className="relative flex gap-3 border-l-4 bg-surface-0 px-4 py-3"
+                  className="relative flex gap-3 border-l-4 bg-surface-1 px-4 py-3"
                 >
                   {/* Colored left border applied via class */}
                   <div
@@ -157,7 +157,7 @@ export function NotificationDrawer() {
                     )}
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-gray-800">
+                    <p className="text-sm text-primary">
                       {notification.message}
                     </p>
                     <p className="mt-1 text-xs text-muted">

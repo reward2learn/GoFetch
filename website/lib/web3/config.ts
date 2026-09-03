@@ -1,6 +1,6 @@
 "use client";
 
-import { baseSepolia } from "wagmi/chains";
+import { sepolia, baseSepolia } from "wagmi/chains";
 
 const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || "";
 
@@ -31,7 +31,7 @@ export function initAppKit(): boolean {
     _appKit = createAppKit({
       adapters: [wagmiAdapter],
       projectId,
-      networks: [baseSepolia],
+      networks: [sepolia, baseSepolia],
       metadata: {
         name: "GoFetch",
         description: "Global Shopping & Delivery Platform",

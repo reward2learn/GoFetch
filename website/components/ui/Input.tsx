@@ -19,14 +19,14 @@ export function Input({ label, error, helperText, className, id, ...props }: Inp
       <input
         id={inputId}
         className={cn(
-          "w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary transition-colors",
-          error ? "border-red-500 focus:ring-red-500" : "border-border",
+          "w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-colors",
+          error ? "border-error focus:ring-error" : "border-border",
           className
         )}
         {...props}
       />
       {(error || helperText) && (
-        <p className={cn("text-sm", error ? "text-red-500" : "text-muted")}>
+        <p className={cn("text-sm", error ? "text-error" : "text-muted")}>
           {error || helperText}
         </p>
       )}

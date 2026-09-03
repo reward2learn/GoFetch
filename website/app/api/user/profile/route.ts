@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { id: session.userId },
-      select: { id: true, name: true, email: true, walletAddress: true, role: true, kycStatus: true, createdAt: true },
+      select: { id: true, name: true, email: true, avatarUrl: true, walletAddress: true, role: true, kycStatus: true, createdAt: true, theme: true },
     });
 
     if (!user) {
@@ -32,16 +32,18 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, email } = body;
+    const { name, email, theme, avatarUrl } = body;
 
     const updateData: Record<string, string> = {};
     if (name !== undefined) updateData.name = name;
     if (email !== undefined) updateData.email = email;
+    if (theme !== undefined) updateData.theme = theme;
+    if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
 
     const user = await prisma.user.update({
       where: { id: session.userId },
       data: updateData,
-      select: { id: true, name: true, email: true, walletAddress: true, role: true },
+      select: { id: true, name: true, email: true, avatarUrl: true, walletAddress: true, role: true, theme: true },
     });
 
     return NextResponse.json(user);

@@ -40,11 +40,11 @@ export function TenantProvider({ children }: TenantProviderProps) {
         // Apply tenant brand colors to CSS variables
         if (tenantConfig) {
           document.documentElement.style.setProperty(
-            "--brand-primary",
+            "--app-primary",
             tenantConfig.primaryColor
           );
           document.documentElement.style.setProperty(
-            "--secondary-primary",
+            "--app-secondary",
             tenantConfig.secondaryColor
           );
         }

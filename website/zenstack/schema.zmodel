@@ -393,3 +393,12 @@ model Notification {
   @@index([createdAt])
   @@map("notifications")
 }
+
+/// Global app settings (key-value store for theme, config, etc.)
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { AppNavbar } from "@/components/layouts/AppNavbar";
@@ -15,6 +15,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
   const { isConnected } = useAccount();
   const { isAuthenticated, sessionChecked, isLoading } = useAppSelector((s) => s.auth);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Check session on mount — single source of truth
   useEffect(() => {
@@ -32,7 +33,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!sessionChecked || (isLoading && !isAuthenticated)) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -46,12 +47,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen bg-surface-0">
       {/* Sidebar — desktop only */}
       <div className="hidden md:flex">
-        <AppSidebar />
+        <AppSidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
       </div>
 
       {/* Main content */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        <AppNavbar />
+        <AppNavbar
+          onSidebarToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          sidebarCollapsed={sidebarCollapsed}
+        />
         <main className="flex-1 overflow-auto pb-16 md:pb-0">{children}</main>
       </div>
 

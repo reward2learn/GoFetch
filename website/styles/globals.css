@@ -4,13 +4,429 @@
 
 @layer base {
   :root {
-    --brand-primary: #2A5A4A;
-    --secondary-primary: #C97A5E;
+    /* Brand */
+    --app-brand: #2A5A4A;
+    --app-brand-hover: #234d3f;
+    --app-brand-active: #1c4034;
+    --app-secondary: #C97A5E;
+    --app-secondary-hover: #b56a4e;
+
+    /* Surfaces */
+    --app-bg: #FCFBFA;
+    --app-surface-0: #FCFBFA;
+    --app-surface-1: #FFFFFF;
+    --app-surface-2: #F8F7F5;
+    --app-surface-3: #F2F0ED;
+
+    /* Text */
+    --app-text: #1a1a1a;
+    --app-text-secondary: #4B5563;
+    --app-text-muted: #6B7280;
+    --app-text-disabled: #9CA3AF;
+
+    /* Borders */
+    --app-border: #E5E3DF;
+    --app-border-strong: #D1D5DB;
+
+    /* Inputs */
+    --app-input-bg: #FFFFFF;
+    --app-input-border: #D1D5DB;
+    --app-input-text: #1a1a1a;
+    --app-input-placeholder: #9CA3AF;
+
+    /* Status — Success */
+    --app-success-bg: #DCFCE7;
+    --app-success-text: #16A34A;
+    --app-success-border: #BBF7D0;
+
+    /* Status — Error */
+    --app-error-bg: #da3c1f;
+    --app-error-text: #DC2626;
+    --app-error-border: #e83030;
+
+    
+    /* Solid Error Button States */
+    --app-error-solid-button-color: var(--app-error-text);
+    --app-error-solid-button-bg: var(--app-error-bg);
+    --app-error-solid-button-border: var(--app-error-border);
+    --app-error-solid-button-color-hover: var(--app-error-text);
+    --app-error-solid-button-bg-hover: transparent;
+    --app-error-solid-button-border-hover: var(--app-error-border);
+    --app-error-solid-button-color-active: var(--app-error-text);
+    --app-error-solid-button-bg-active: transparent;
+    --app-error-solid-button-border-active: var(--app-error-border);
+
+    /* Outline Error Button States */
+    --app-error-outline-button-color: var(--app-error-text);
+    --app-error-outline-button-bg: transparent;
+    --app-error-outline-button-border: var(--app-error-border);
+    --app-error-outline-button-color-hover: var(--app-error-text);
+    --app-error-outline-button-bg-hover: transparent;
+    --app-error-outline-button-border-hover: var(--app-error-border);
+    --app-error-outline-button-color-active: var(--app-error-text);
+    --app-error-outline-button-bg-active: transparent;
+    --app-error-outline-button-border-active: var(--app-error-border);
+    /* Light/Dark prefixed error outline button variables */
+    --light--app-error-outline-button-color:  inherit;
+    --light--app-error-outline-button-bg: transparent;
+    --light--app-error-outline-button-border: var(--app-error-border);
+    --light--app-error-outline-button-color-hover: inherit;
+    --light--app-error-outline-button-bg-hover: transparent;
+    --light--app-error-outline-button-border-hover: var(--app-error-border);
+    --light--app-error-outline-button-color-active: inherit;
+    --light--app-error-outline-button-bg-active: transparent;
+    --light--app-error-outline-button-border-active: var(--app-error-border);
+
+    --dark--app-error-outline-button-color: var(--app-error-text);
+    --dark--app-error-outline-button-bg: transparent;
+    --dark--app-error-outline-button-border: var(--app-error-border);
+    --dark--app-error-outline-button-color-hover: var(--app-error-text);
+    --dark--app-error-outline-button-bg-hover: transparent;
+    --dark--app-error-outline-button-border-hover: var(--app-error-border);
+    --dark--app-error-outline-button-color-active: var(--app-error-text);
+    --dark--app-error-outline-button-bg-active: transparent;
+    --dark--app-error-outline-button-border-active: var(--app-error-border);
+    /* Status — Warning */
+    /* ===== LIGHT/DARK PREfixed BUTTON VARIANTS FOR ALL 4 VARIANTS ===== */
+    /* Error variant - solid */
+    --light--app-error-solid-button-color: var(--app-error-text);
+    --light--app-error-solid-button-bg: var(--app-error-bg);
+    --light--app-error-solid-button-border: var(--app-error-border);
+    --light--app-error-solid-button-color-hover: var(--app-error-text);
+    --light--app-error-solid-button-bg-hover: transparent;
+    --light--app-error-solid-button-border-hover: var(--app-error-border);
+    --light--app-error-solid-button-color-active: var(--app-error-text);
+    --light--app-error-solid-button-bg-active: transparent;
+    --light--app-error-solid-button-border-active: var(--app-error-border);
+    --dark--app-error-solid-button-color: var(--app-error-text);
+    --dark--app-error-solid-button-bg: var(--app-error-bg);
+    --dark--app-error-solid-button-border: var(--app-error-border);
+    --dark--app-error-solid-button-color-hover: var(--app-error-text);
+    --dark--app-error-solid-button-bg-hover: transparent;
+    --dark--app-error-solid-button-border-hover: var(--app-error-border);
+    --dark--app-error-solid-button-color-active: var(--app-error-text);
+    --dark--app-error-solid-button-bg-active: transparent;
+    --dark--app-error-solid-button-border-active: var(--app-error-border);
+    
+    /* Error variant - outline */
+    --light--app-error-outline-button-color: var(--app-error-text);
+    --light--app-error-outline-button-bg: transparent;
+    --light--app-error-outline-button-border: var(--app-error-border);
+    --light--app-error-outline-button-color-hover: var(--app-error-text);
+    --light--app-error-outline-button-bg-hover: transparent;
+    --light--app-error-outline-button-border-hover: var(--app-error-border);
+    --light--app-error-outline-button-color-active: var(--app-error-text);
+    --light--app-error-outline-button-bg-active: transparent;
+    --light--app-error-outline-button-border-active: var(--app-error-border);
+    --dark--app-error-outline-button-color: var(--app-error-text);
+    --dark--app-error-outline-button-bg: transparent;
+    --dark--app-error-outline-button-border: var(--app-error-border);
+    --dark--app-error-outline-button-color-hover: var(--app-error-text);
+    --dark--app-error-outline-button-bg-hover: transparent;
+    --dark--app-error-outline-button-border-hover: var(--app-error-border);
+    --dark--app-error-outline-button-color-active: var(--app-error-text);
+    --dark--app-error-outline-button-bg-active: transparent;
+    --dark--app-error-outline-button-border-active: var(--app-error-border);
+    
+    /* Success variant - solid */
+    --light--app-success-solid-button-color: var(--app-success-text);
+    --light--app-success-solid-button-bg: var(--app-success-bg);
+    --light--app-success-solid-button-border: var(--app-success-border);
+    --light--app-success-solid-button-color-hover: var(--app-success-text);
+    --light--app-success-solid-button-bg-hover: transparent;
+    --light--app-success-solid-button-border-hover: var(--app-success-border);
+    --light--app-success-solid-button-color-active: var(--app-success-text);
+    --light--app-success-solid-button-bg-active: transparent;
+    --light--app-success-solid-button-border-active: var(--app-success-border);
+    --dark--app-success-solid-button-color: var(--app-success-text);
+    --dark--app-success-solid-button-bg: var(--app-success-bg);
+    --dark--app-success-solid-button-border: var(--app-success-border);
+    --dark--app-success-solid-button-color-hover: var(--app-success-text);
+    --dark--app-success-solid-button-bg-hover: transparent;
+    --dark--app-success-solid-button-border-hover: var(--app-success-border);
+    --dark--app-success-solid-button-color-active: var(--app-success-text);
+    --dark--app-success-solid-button-bg-active: transparent;
+    --dark--app-success-solid-button-border-active: var(--app-success-border);
+    
+    /* Success variant - outline */
+    --light--app-success-outline-button-color: var(--app-success-text);
+    --light--app-success-outline-button-bg: transparent;
+    --light--app-success-outline-button-border: var(--app-success-border);
+    --light--app-success-outline-button-color-hover: var(--app-success-text);
+    --light--app-success-outline-button-bg-hover: transparent;
+    --light--app-success-outline-button-border-hover: var(--app-success-border);
+    --light--app-success-outline-button-color-active: var(--app-success-text);
+    --light--app-success-outline-button-bg-active: transparent;
+    --light--app-success-outline-button-border-active: var(--app-success-border);
+    --dark--app-success-outline-button-color: var(--app-success-text);
+    --dark--app-success-outline-button-bg: transparent;
+    --dark--app-success-outline-button-border: var(--app-success-border);
+    --dark--app-success-outline-button-color-hover: var(--app-success-text);
+    --dark--app-success-outline-button-bg-hover: transparent;
+    --dark--app-success-outline-button-border-hover: var(--app-success-border);
+    --dark--app-success-outline-button-color-active: var(--app-success-text);
+    --dark--app-success-outline-button-bg-active: transparent;
+    --dark--app-success-outline-button-border-active: var(--app-success-border);
+    
+    /* Warning variant - solid */
+    --light--app-warning-solid-button-color: var(--app-warning-text);
+    --light--app-warning-solid-button-bg: var(--app-warning-bg);
+    --light--app-warning-solid-button-border: var(--app-warning-border);
+    --light--app-warning-solid-button-color-hover: var(--app-warning-text);
+    --light--app-warning-solid-button-bg-hover: transparent;
+    --light--app-warning-solid-button-border-hover: var(--app-warning-border);
+    --light--app-warning-solid-button-color-active: var(--app-warning-text);
+    --light--app-warning-solid-button-bg-active: transparent;
+    --light--app-warning-solid-button-border-active: var(--app-warning-border);
+    --dark--app-warning-solid-button-color: var(--app-warning-text);
+    --dark--app-warning-solid-button-bg: var(--app-warning-bg);
+    --dark--app-warning-solid-button-border: var(--app-warning-border);
+    --dark--app-warning-solid-button-color-hover: var(--app-warning-text);
+    --dark--app-warning-solid-button-bg-hover: transparent;
+    --dark--app-warning-solid-button-border-hover: var(--app-warning-border);
+    --dark--app-warning-solid-button-color-active: var(--app-warning-text);
+    --dark--app-warning-solid-button-bg-active: transparent;
+    --dark--app-warning-solid-button-border-active: var(--app-warning-border);
+    
+    /* Warning variant - outline */
+    --light--app-warning-outline-button-color: var(--app-warning-text);
+    --light--app-warning-outline-button-bg: transparent;
+    --light--app-warning-outline-button-border: var(--app-warning-border);
+    --light--app-warning-outline-button-color-hover: var(--app-warning-text);
+    --light--app-warning-outline-button-bg-hover: transparent;
+    --light--app-warning-outline-button-border-hover: var(--app-warning-border);
+    --light--app-warning-outline-button-color-active: var(--app-warning-text);
+    --light--app-warning-outline-button-bg-active: transparent;
+    --light--app-warning-outline-button-border-active: var(--app-warning-border);
+    --dark--app-warning-outline-button-color: var(--app-warning-text);
+    --dark--app-warning-outline-button-bg: transparent;
+    --dark--app-warning-outline-button-border: var(--app-warning-border);
+    --dark--app-warning-outline-button-color-hover: var(--app-warning-text);
+    --dark--app-warning-outline-button-bg-hover: transparent;
+    --dark--app-warning-outline-button-border-hover: var(--app-warning-border);
+    --dark--app-warning-outline-button-color-active: var(--app-warning-text);
+    --dark--app-warning-outline-button-bg-active: transparent;
+    --dark--app-warning-outline-button-border-active: var(--app-warning-border);
+    
+    /* Info variant - solid */
+    --light--app-info-solid-button-color: var(--app-info-text);
+    --light--app-info-solid-button-bg: var(--app-info-bg);
+    --light--app-info-solid-button-border: var(--app-info-border);
+    --light--app-info-solid-button-color-hover: var(--app-info-text);
+    --light--app-info-solid-button-bg-hover: transparent;
+    --light--app-info-solid-button-border-hover: var(--app-info-border);
+    --light--app-info-solid-button-color-active: var(--app-info-text);
+    --light--app-info-solid-button-bg-active: transparent;
+    --light--app-info-solid-button-border-active: var(--app-info-border);
+    --dark--app-info-solid-button-color: var(--app-info-text);
+    --dark--app-info-solid-button-bg: var(--app-info-bg);
+    --dark--app-info-solid-button-border: var(--app-info-border);
+    --dark--app-info-solid-button-color-hover: var(--app-info-text);
+    --dark--app-info-solid-button-bg-hover: transparent;
+    --dark--app-info-solid-button-border-hover: var(--app-info-border);
+    --dark--app-info-solid-button-color-active: var(--app-info-text);
+    --dark--app-info-solid-button-bg-active: transparent;
+    --dark--app-info-solid-button-border-active: var(--app-info-border);
+    
+    /* Info variant - outline */
+    --light--app-info-outline-button-color: var(--app-info-text);
+    --light--app-info-outline-button-bg: transparent;
+    --light--app-info-outline-button-border: var(--app-info-border);
+    --light--app-info-outline-button-color-hover: var(--app-info-text);
+    --light--app-info-outline-button-bg-hover: transparent;
+    --light--app-info-outline-button-border-hover: var(--app-info-border);
+    --light--app-info-outline-button-color-active: var(--app-info-text);
+    --light--app-info-outline-button-bg-active: transparent;
+    --light--app-info-outline-button-border-active: var(--app-info-border);
+    --dark--app-info-outline-button-color: var(--app-info-text);
+    --dark--app-info-outline-button-bg: transparent;
+    --dark--app-info-outline-button-border: var(--app-info-border);
+    --dark--app-info-outline-button-color-hover: var(--app-info-text);
+    --dark--app-info-outline-button-bg-hover: transparent;
+    --dark--app-info-outline-button-border-hover: var(--app-info-border);
+    --dark--app-info-outline-button-color-active: var(--app-info-text);
+    --dark--app-info-outline-button-bg-active: transparent;
+    --dark--app-info-outline-button-border-active: var(--app-info-border);
+    --app-warning-bg: #ffa200;
+    --app-warning-text: #fffdfa;
+    --app-warning-border: #cf7c07;
+
+    /* Status — Info */
+    --app-info-bg: #DBEAFE;
+    --app-info-text: #2563EB;
+    --app-info-border: #BFDBFE;
+
+    /* Shadows */
+    --app-shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+    --app-shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+    --app-shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+
+    /* Overlay */
+    --app-overlay: rgba(0,0,0,0.5);
+
+    /* Hover */
+    --app-hover: rgba(0,0,0,0.04);
+    --app-hover-strong: rgba(0,0,0,0.08);
   }
+
+  /* ── Dark theme ── */
+  .dark {
+    /* Brand — same in dark */
+    --app-brand: #3d8b6e;
+    --app-brand-hover: #2A5A4A;
+    --app-brand-active: #234d3f;
+    --app-secondary: #d4896a;
+    --app-secondary-hover: #C97A5E;
+
+    /* Surfaces */
+    --app-bg: #0f1114;
+    --app-surface-0: #0f1114;
+    --app-surface-1: #181b20;
+    --app-surface-2: #1e2127;
+    --app-surface-3: #252830;
+
+    /* Text */
+    --app-text: #e4e4e7;
+    --app-text-secondary: #a1a1aa;
+    --app-text-muted: #71717a;
+    --app-text-disabled: #52525b;
+
+    /* Borders */
+    --app-border: #2e3138;
+    --app-border-strong: #383b42;
+
+    /* Inputs */
+    --app-input-bg: #1e2127;
+    --app-input-border: #383b42;
+    --app-input-text: #e4e4e7;
+    --app-input-placeholder: #52525b;
+
+    /* Status — Success */
+    --app-success-bg: rgba(34,197,94,0.12);
+    --app-success-text: #4ade80;
+    --app-success-border: rgba(34,197,94,0.25);
+
+    /* Status — Error */
+    --app-error-bg: rgba(239,68,68,0.12);
+    --app-error-text: #f87171;
+    --app-error-border: rgba(239,68,68,0.25);
+
+    /* Status — Warning */
+    --app-warning-bg: rgba(234,179,8,0.12);
+    --app-warning-text: #facc15;
+    --app-warning-border: rgba(234,179,8,0.25);
+
+    /* Status — Info */
+    --app-info-bg: rgba(59,130,246,0.12);
+    --app-info-text: #60a5fa;
+    --app-info-border: rgba(59,130,246,0.25);
+
+    /* Shadows */
+    --app-shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.4);
+    --app-shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4), 0 2px 4px -2px rgba(0,0,0,0.3);
+    --app-shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -4px rgba(0,0,0,0.3);
+
+    /* Overlay */
+    --app-overlay: rgba(0,0,0,0.6);
+
+    /* Hover */
+    --app-hover: rgba(255,255,255,0.06);
+    --app-hover-strong: rgba(255,255,255,0.1);
+  }
+}
+
+/* ── Base styles ── */
+html {
+  color-scheme: light;
+}
+.dark html {
+  color-scheme: dark;
 }
 
 body {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  background-color: #FCFBFA;
-  color: #1a1a1a;
+  background-color: var(--app-bg);
+  color: var(--app-text);
 }
+
+/* ── Tailwind utility overrides using CSS vars ── */
+.bg-surface-0 { background-color: var(--app-surface-0); }
+.bg-surface-1 { background-color: var(--app-surface-1); }
+.bg-surface-2 { background-color: var(--app-surface-2); }
+.bg-surface-tertiary { background-color: var(--app-surface-3); }
+
+.border-border { border-color: var(--app-border); }
+.border-divider { border-color: var(--app-border); }
+
+.text-primary { color: var(--app-text); }
+.text-secondary { color: var(--app-text-secondary); }
+.text-muted { color: var(--app-text-muted); }
+.text-disabled { color: var(--app-text-disabled); }
+
+.hover\:bg-surface-hover:hover { background-color: var(--app-hover); }
+.hover\:bg-surface-hover-strong:hover { background-color: var(--app-hover-strong); }
+
+.shadow-sm { box-shadow: var(--app-shadow-sm); }
+.shadow-md { box-shadow: var(--app-shadow-md); }
+.shadow-lg { box-shadow: var(--app-shadow-lg); }
+
+/* ── Semantic color utilities ── */
+.bg-success { background-color: var(--app-success-bg); color: var(--app-success-text); }
+.text-success { color: var(--app-success-text); }
+.border-success { border-color: var(--app-success-border); }
+
+.bg-error { background-color: var(--app-error-bg); }
+.text-error { color: var(--light--app-error-outline-button-color-hover); }
+.border-error { border-color: var(--app-error-border); }
+.bg-error:hover {
+  background-color: transparent !important;
+}
+  
+  
+/* Delete button hover states - using dark theme CSS variables */
+@media (prefers-color-scheme: dark) {
+  .delete-btn:hover {
+    background-color: var(--dark--app-error-outline-button-bg-hover) !important;
+    color: var(--dark--app-error-outline-button-color-hover) !important;
+  }
+}
+
+
+.bg-warning { background-color: var(--app-warning-bg); }
+.text-warning { color: var(--app-warning-text); }
+.border-warning { border-color: var(--app-warning-border); }
+
+.bg-info { background-color: var(--app-info-bg); }
+.text-info { color: var(--app-info-text); }
+.border-info { border-color: var(--app-info-border); }
+
+/* ── Input overrides ── */
+input, select, textarea {
+  background-color: var(--app-input-bg);
+  border-color: var(--app-input-border);
+  color: var(--app-input-text);
+}
+input::placeholder, textarea::placeholder, select::placeholder {
+  color: var(--app-input-placeholder);
+}
+
+/* ── Animation pulse ── */
+.animate-pulse {
+  background-color: var(--app-surface-3);
+}
+
+/* ── Brand button shortcuts ── */
+.bg-brand { background-color: var(--app-brand); }
+.hover\:bg-brand:hover { background-color: var(--app-brand-hover); }
+.bg-brand-secondary { background-color: var(--app-secondary); }
+.hover\:bg-brand-secondary:hover { background-color: var(--app-secondary-hover); }
+
+/* ── Additional surface aliases ── */
+.bg-surface-3 { background-color: var(--app-surface-3); }
+
+.hover\:bg-surface-1:hover { background-color: var(--app-surface-1); }
+.hover\:bg-surface-2:hover { background-color: var(--app-surface-2); }
+.hover\:bg-surface-3:hover { background-color: var(--app-surface-3); }
+
+.text-brand { color: var(--app-brand); }
+.text-on-brand { color: #ffffff; }

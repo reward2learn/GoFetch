@@ -44,7 +44,7 @@ Sign in to GoFetch
 
 URI: https://gofetch.app
 Version: 1
-Chain ID: 84532
+Chain ID: 11155111
 Nonce: ${nonce}
 Issued At: ${new Date().toISOString()}`;
 

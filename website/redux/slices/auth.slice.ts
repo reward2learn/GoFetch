@@ -7,6 +7,7 @@ export interface AuthState {
     email?: string;
     name?: string;
     role?: string;
+    avatarUrl?: string;
   } | null;
   token: string | null;
   isAuthenticated: boolean;
@@ -74,7 +75,7 @@ export const signInWithWallet = createAsyncThunk<
       if (!nonceRes.ok) throw new Error("Failed to get nonce");
       const { nonce } = await nonceRes.json();
 
-      const message = `gofetch.app wants you to sign in with your Ethereum account:\n${address}\n\nSign in to GoFetch\n\nURI: https://gofetch.app\nVersion: 1\nChain ID: 84532\nNonce: ${nonce}\nIssued At: ${new Date().toISOString()}`;
+      const message = `gofetch.app wants you to sign in with your Ethereum account:\n${address}\n\nSign in to GoFetch\n\nURI: https://gofetch.app\nVersion: 1\nChain ID: 11155111\nNonce: ${nonce}\nIssued At: ${new Date().toISOString()}`;
 
       const signature = await signMessageAsync({ message });
 

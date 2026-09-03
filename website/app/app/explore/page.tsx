@@ -238,11 +238,11 @@ export default function ExplorePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Explore Requests</h1>
-          <p className="text-sm text-gray-500">Find delivery opportunities worldwide</p>
+          <p className="text-sm text-muted">Find delivery opportunities worldwide</p>
         </div>
         <button
           onClick={() => { resetForm(); setShowPostModal(true); }}
-          className="px-4 py-2 bg-green-700 text-white rounded-full text-sm font-medium hover:bg-green-800 transition-colors"
+          className="px-4 py-2 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary-hover transition-colors"
         >
           Post Request
         </button>
@@ -254,38 +254,38 @@ export default function ExplorePage() {
         placeholder="Search perfume, sneakers, tech..."
         value={searchQuery}
         onChange={(e) => dispatch(setSearchQuery(e.target.value))}
-        className="w-full px-4 py-3 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+        className="w-full px-4 py-3 bg-surface-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
       />
 
       {/* Filters row */}
-      <div className="flex gap-3 items-center">
+      <div className="flex flex-wrap gap-3 items-center">
         {/* Multi-select category dropdown */}
         <div className="relative" ref={catDropdownRef}>
           <button
             onClick={() => setCatDropdownOpen(!catDropdownOpen)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-border rounded-lg text-sm font-medium hover:bg-surface-hover transition-colors"
           >
             {categoryLabel()}
             <ChevronDown className={`h-4 w-4 transition-transform ${catDropdownOpen ? "rotate-180" : ""}`} />
           </button>
           {catDropdownOpen && (
-            <div className="absolute z-20 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg">
-              <label className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100">
+            <div className="absolute z-20 mt-1 w-56 bg-surface-1 border border-border rounded-lg shadow-lg">
+              <label className="flex items-center gap-2 px-4 py-2 hover:bg-surface-hover cursor-pointer border-b border-border">
                 <input
                   type="checkbox"
                   checked={selectedCategories.length === ALL_CATEGORIES.length}
                   onChange={() => toggleCategory("All")}
-                  className="rounded border-gray-300 text-green-700 focus:ring-green-700"
+                  className="rounded border-divider text-primary-color focus:ring-primary"
                 />
                 <span className="text-sm font-medium">All</span>
               </label>
               {ALL_CATEGORIES.map((cat) => (
-                <label key={cat} className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer">
+                <label key={cat} className="flex items-center gap-2 px-4 py-2 hover:bg-surface-hover cursor-pointer">
                   <input
                     type="checkbox"
                     checked={selectedCategories.includes(cat)}
                     onChange={() => toggleCategory(cat)}
-                    className="rounded border-gray-300 text-green-700 focus:ring-green-700"
+                    className="rounded border-divider text-primary-color focus:ring-primary"
                   />
                   <span className="text-sm">{cat}</span>
                 </label>
@@ -298,7 +298,7 @@ export default function ExplorePage() {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-700"
+          className="px-4 py-2 bg-surface-1 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -309,7 +309,7 @@ export default function ExplorePage() {
         <select
           value={deliveryTypeFilter}
           onChange={(e) => setDeliveryTypeFilter(e.target.value as "all" | "standard" | "click_and_collect")}
-          className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-700"
+          className="px-4 py-2 bg-surface-1 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="all">All Types</option>
           <option value="standard">Standard Delivery</option>
@@ -320,7 +320,7 @@ export default function ExplorePage() {
         <select
           value={filterFromCountry}
           onChange={(e) => setFilterFromCountry(e.target.value)}
-          className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-700"
+          className="px-4 py-2 bg-surface-1 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">From Country</option>
           {COUNTRIES.map((c) => (
@@ -331,7 +331,7 @@ export default function ExplorePage() {
         <select
           value={filterToCountry}
           onChange={(e) => setFilterToCountry(e.target.value)}
-          className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-700"
+          className="px-4 py-2 bg-surface-1 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">To Country</option>
           {COUNTRIES.map((c) => (
@@ -342,7 +342,7 @@ export default function ExplorePage() {
         {(filterFromCountry || filterToCountry) && (
           <button
             onClick={() => { setFilterFromCountry(""); setFilterToCountry(""); }}
-            className="text-sm text-green-700 hover:underline"
+            className="text-sm text-primary-color hover:underline"
           >
             Clear Countries
           </button>
@@ -351,7 +351,7 @@ export default function ExplorePage() {
 
       {/* Results count */}
       {!loading && (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted">
           {requests.length} {requests.length === 1 ? "request" : "requests"} found
         </p>
       )}
@@ -360,18 +360,18 @@ export default function ExplorePage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse bg-white rounded-xl overflow-hidden">
-              <div className="h-44 bg-gray-200" />
+            <div key={i} className="animate-pulse bg-surface-1 rounded-xl overflow-hidden">
+              <div className="h-44 bg-surface-3" />
               <div className="p-3 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-2/3" />
-                <div className="h-3 bg-gray-200 rounded w-1/2" />
+                <div className="h-4 bg-surface-3 rounded w-2/3" />
+                <div className="h-3 bg-surface-3 rounded w-1/2" />
               </div>
             </div>
           ))}
         </div>
       ) : requests.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-gray-500">No requests found. Try adjusting your filters.</p>
+          <p className="text-muted">No requests found. Try adjusting your filters.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -388,8 +388,8 @@ export default function ExplorePage() {
         title="Post a Request"
         footer={
           <>
-            <button type="button" onClick={() => { resetForm(); setShowPostModal(false); }} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-            <button type="submit" form="post-request-form" disabled={posting} className="px-4 py-2 text-sm bg-green-700 text-white rounded-lg font-medium hover:bg-green-800 disabled:opacity-50">
+            <button type="button" onClick={() => { resetForm(); setShowPostModal(false); }} className="px-4 py-2 text-sm text-secondary hover:bg-surface-hover rounded-lg">Cancel</button>
+            <button type="submit" form="post-request-form" disabled={posting} className="px-4 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-hover disabled:opacity-50">
               {posting ? "Posting..." : "Post Request"}
             </button>
           </>
@@ -406,19 +406,19 @@ export default function ExplorePage() {
                 value={productUrl}
                 onChange={(e) => setProductUrl(e.target.value)}
                 placeholder="https://store.example.com/product..."
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <button
                 type="button"
                 onClick={handleScrape}
                 disabled={!productUrl || scraping}
-                className="flex items-center gap-1.5 px-3 py-2 bg-brand-primary text-white rounded-lg text-sm font-medium hover:bg-brand-400 disabled:opacity-50 transition-colors whitespace-nowrap"
+                className="flex items-center gap-1.5 px-3 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors whitespace-nowrap"
               >
                 <Sparkles className="h-4 w-4" />
                 {scraping ? "Scraping..." : "Generate"}
               </button>
             </div>
-            {scrapeError && <p className="text-xs text-red-600 mt-1">{scrapeError}</p>}
+            {scrapeError && <p className="text-xs text-error mt-1">{scrapeError}</p>}
           </div>
 
           {/* 2. Image upload */}
@@ -428,7 +428,7 @@ export default function ExplorePage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm text-secondary hover:bg-surface-hover transition-colors"
               >
                 <Upload className="h-4 w-4" />
                 Upload Image
@@ -446,12 +446,12 @@ export default function ExplorePage() {
                 value={imageUrl}
                 onChange={(e) => { setImageUrl(e.target.value); setImagePreview(null); }}
                 placeholder="Or paste image URL"
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
             {imagePreview && (
               <div className="mt-2 relative inline-block">
-                <img src={imagePreview} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-gray-200" />
+                <img src={imagePreview} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-border" />
                 <button
                   type="button"
                   onClick={() => { setImagePreview(null); setImageUrl(""); }}
@@ -469,13 +469,13 @@ export default function ExplorePage() {
           {/* 4. Description */}
           <div>
             <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea name="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Optional details..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
+            <textarea name="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Optional details..." className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
           </div>
 
           {/* 5. Category */}
           <div>
             <label className="block text-sm font-medium mb-1">Category</label>
-            <select name="category" value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700">
+            <select name="category" value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
               <option value="Beauty">Beauty</option>
               <option value="Electronics">Electronics</option>
               <option value="Fashion">Fashion</option>
@@ -493,8 +493,8 @@ export default function ExplorePage() {
                 onClick={() => setDeliveryType("standard")}
                 className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                   deliveryType === "standard"
-                    ? "bg-brand-primary text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "bg-primary text-white"
+                    : "bg-surface-2 text-secondary hover:bg-surface-hover-strong"
                 }`}
               >
                 📦 Standard Delivery
@@ -504,8 +504,8 @@ export default function ExplorePage() {
                 onClick={() => setDeliveryType("click_and_collect")}
                 className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                   deliveryType === "click_and_collect"
-                    ? "bg-brand-primary text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "bg-primary text-white"
+                    : "bg-surface-2 text-secondary hover:bg-surface-hover-strong"
                 }`}
               >
                 ✈️ Click & Collect
@@ -570,7 +570,7 @@ export default function ExplorePage() {
                   value={pickupInstructions}
                   onChange={(e) => setPickupInstructions(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary transition-colors text-sm"
+                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-colors text-sm"
                   required
                 />
               </div>
@@ -600,7 +600,7 @@ export default function ExplorePage() {
               <select
                 value={fromCountry}
                 onChange={(e) => { setFromCountry(e.target.value); setFromCity(""); }}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               >
                 <option value="">Select country</option>
@@ -615,7 +615,7 @@ export default function ExplorePage() {
                 value={fromCity}
                 onChange={(e) => setFromCity(e.target.value)}
                 disabled={!fromCountry}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 disabled:bg-gray-50 disabled:text-gray-400"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-surface-2 disabled:text-muted"
                 required
               >
                 <option value="">{fromCountry ? "Select city" : "Select country first"}</option>
@@ -633,7 +633,7 @@ export default function ExplorePage() {
               <select
                 value={toCountry}
                 onChange={(e) => { setToCountry(e.target.value); setToCity(""); }}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               >
                 <option value="">Select country</option>
@@ -648,7 +648,7 @@ export default function ExplorePage() {
                 value={toCity}
                 onChange={(e) => setToCity(e.target.value)}
                 disabled={!toCountry}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-700 disabled:bg-gray-50 disabled:text-gray-400"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-surface-2 disabled:text-muted"
                 required
               >
                 <option value="">{toCountry ? "Select city" : "Select country first"}</option>
@@ -659,7 +659,7 @@ export default function ExplorePage() {
             </div>
           </div>
 
-          {postError && <p className="text-sm text-red-600">{postError}</p>}
+          {postError && <p className="text-sm text-error">{postError}</p>}
         </form>
       </Modal>
     </div>

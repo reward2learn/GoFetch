@@ -30,10 +30,11 @@ export function Avatar({ src, alt, name, size = "md", className }: AvatarProps) 
   return (
     <div
       className={cn(
-        "relative rounded-full overflow-hidden flex items-center justify-center bg-brand-primary text-white font-semibold",
+        "relative rounded-full overflow-hidden flex items-center justify-center bg-primary font-semibold",
         sizeClasses[size],
         className
       )}
+      style={{ color: "#FFFFFF" }}
     >
       {src ? (
         <img

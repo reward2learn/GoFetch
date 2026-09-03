@@ -1,0 +1,1330 @@
+
+{
+  "palette": {
+    "mode": "dark",
+    "primary": {
+      "main": "#666666"
+    }
+  },
+  "typography": {
+    "fontWeightLight": 300,
+    "fontWeightRegular": 400,
+    "fontWeightMedium": 500,
+    "fontWeightBold": 700,
+    "fontSize": 13.5
+  },
+  "shape": {
+    "borderRadius": 3
+  },
+  "spacing": 7.5
+}
+
+Light and dark modes
+
+When the built-in dark color scheme and cssVariables are enabled, both light and dark CSS variables are generated with the default CSS media prefers-color-scheme method.
+
+This method works with server-side rendering without extra configuration. However, users won't be able to toggle between modes because the styles are based on the browser media.
+
+If you want to be able to manually toggle modes, see the guide to toggling dark mode manually.
+
+Applying dark styles
+
+To customize styles for dark mode, use the theme.applyStyles() function.
+
+The example below shows how to customize the Card component for dark mode:
+
+import Card from '@mui/material/Card';
+
+<Card
+  sx={[
+    (theme) => ({
+      backgroundColor: theme.vars.palette.background.default,
+    }),
+    (theme) =>
+      theme.applyStyles('dark', {
+        backgroundColor: theme.vars.palette.grey[900],
+      }),
+  ]}
+/>;
+
+Copy
+Do not use theme.palette.mode to switch between light and dark styles—this produces an unwanted flickering effect.
+
+Using theme variables
+
+When the CSS variables feature is enabled, the vars node is added to the theme. This vars object mirrors the structure of a serializable theme, with each value corresponding to a CSS variable.
+
+theme.vars (recommended): an object that refers to the CSS theme variables.
+
+const Button = styled('button')(({ theme }) => ({
+  backgroundColor: theme.vars.palette.primary.main, // var(--mui-palette-primary-main)
+  color: theme.vars.palette.primary.contrastText, // var(--mui-palette-primary-contrastText)
+}));
+
+Copy
+For TypeScript, the typings are not enabled by default. Follow the TypeScript setup to enable the typings.
+
+If the components need to render outside of the CssVarsProvider, add fallback to the theme object.
+backgroundColor: (theme.vars || theme).palette.primary.main;
+
+Copy
+Native CSS: if you can't access the theme object, for example in a pure CSS file, you can use var() directly:
+
+/* external-scope.css */
+.external-section {
+  background-color: var(--mui-palette-grey-50);
+}
+
+Copy
+Color channel tokens
+
+Enabling cssVariables automatically generates channel tokens which are used to create translucent colors. These tokens consist of color space channels without the alpha component, separated by spaces.
+
+The colors are suffixed with Channel—for example:
+
+const theme = createTheme({ cssVariables: true });
+
+console.log(theme.palette.primary.mainChannel); // '25 118 210'
+// This token is generated from `theme.colorSchemes.light.palette.primary.main`.
+
+Copy
+You can use the channel tokens to create a translucent color like this:
+
+const theme = createTheme({
+  cssVariables: true,
+  components: {
+    MuiChip: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          variants: [
+            {
+              props: { variant: 'outlined', color: 'primary' },
+              style: {
+                backgroundColor: `rgba(${theme.vars.palette.primary.mainChannel} / 0.12)`,
+              },
+            },
+          ],
+        }),
+      },
+    },
+  },
+});
+
+Copy
+Don't use a comma (,) as a separator because the channel colors use empty spaces to define transparency:
+
+`rgba(${theme.vars.palette.primary.mainChannel}, 0.12)`, // 🚫 this does not work
+`rgba(${theme.vars.palette.primary.mainChannel} / 0.12)`, // ✅ always use `/`
+
+Copy
+Adding new theme tokens
+
+You can add other key-value pairs to the theme input which will be generated as a part of the CSS theme variables:
+
+const theme = createTheme({
+  cssVariables: true,
+  colorSchemes: {
+    light: {
+      palette: {
+        // The best part is that you can refer to the variables wherever you like 🤩
+        gradient:
+          'linear-gradient(to left, var(--mui-palette-primary-main), var(--mui-palette-primary-dark))',
+        border: {
+          subtle: 'var(--mui-palette-neutral-200)',
+        },
+      },
+    },
+    dark: {
+      palette: {
+        gradient:
+          'linear-gradient(to left, var(--mui-palette-primary-light), var(--mui-palette-primary-main))',
+        border: {
+          subtle: 'var(--mui-palette-neutral-600)',
+        },
+      },
+    },
+  },
+});
+
+function App() {
+  return <ThemeProvider theme={theme}>...</ThemeProvider>;
+}
+
+Copy
+Then, you can access those variables from the theme.vars object:
+
+const Divider = styled('hr')(({ theme }) => ({
+  height: 1,
+  border: '1px solid',
+  borderColor: theme.vars.palette.border.subtle,
+  backgroundColor: theme.vars.palette.gradient,
+}));
+
+Copy
+Or use var() to refer to the CSS variable directly:
+
+/* global.css */
+.external-section {
+  background-color: var(--mui-palette-gradient);
+}
+
+Copy
+If you're using a custom prefix, make sure to replace the default --mui.
+
+For TypeScript, you need to augment the palette interfaces.
+
+TypeScript
+
+The theme variables type is not enabled by default. You need to import the module augmentation to enable the typings:
+
+// The import can be in any file that is included in your `tsconfig.json`
+import type {} from '@mui/material/themeCssVarsAugmentation';
+import { styled } from '@mui/material/styles';
+
+const StyledComponent = styled('button')(({ theme }) => ({
+  // ✅ typed-safe
+  color: theme.vars.palette.primary.main,
+}));
+
+Copy
+Palette interfaces
+
+To add new tokens to the theme palette, you need to augment the PaletteOptions and Palette interfaces:
+
+declare module '@mui/material/styles' {
+  interface PaletteOptions {
+    gradient: string;
+    border: {
+      subtle: string;
+    };
+  }
+  interface Palette {
+    gradient: string;
+    border: {
+      subtle: string;
+    };
+  }
+}
+Default theme viewer
+This tree view allows you to explore how the theme object looks like with the default values.
+ads via Carbon
+Check out the latest remote job listings from the leading job board for designers, developers, and creative pros.
+ads via Carbon
+
+If you want to learn more about how the theme is assembled, take a look at material-ui/style/createTheme.ts, and the related imports which createTheme() uses.
+
+You can play with the documentation theme object in your browser console, as the theme variable is exposed on all the documentation pages.
+
+Please note that the documentation site is using a custom theme (the MUI's organization branding).
+
+Expand all
+Use dark theme
+breakpoints: Object
+keys: Array(5)
+0: "xs"
+1: "sm"
+2: "md"
+3: "lg"
+4: "xl"
+values: Object
+xs: 0
+sm: 600
+md: 900
+lg: 1200
+xl: 1536
+up: f s()
+down: f c()
+between: f u()
+only: f only()
+not: f not()
+unit: "px"
+internal_mediaKeys: Array(5)
+0: "@media (min-width:0px)"
+1: "@media (min-width:600px)"
+2: "@media (min-width:900px)"
+3: "@media (min-width:1200px)"
+4: "@media (min-width:1536px)"
+direction: "ltr"
+components: Object
+palette: Object
+mode: "light"
+common: Object
+black: 
+#000
+white: 
+#fff
+primary: Object
+main: 
+#1976d2
+light: 
+#42a5f5
+dark: 
+#1565c0
+contrastText: 
+#fff
+secondary: Object
+main: 
+#9c27b0
+light: 
+#ba68c8
+dark: 
+#7b1fa2
+contrastText: 
+#fff
+error: Object
+main: 
+#d32f2f
+light: 
+#ef5350
+dark: 
+#c62828
+contrastText: 
+#fff
+warning: Object
+main: 
+#ed6c02
+light: 
+#ff9800
+dark: 
+#e65100
+contrastText: 
+#fff
+info: Object
+main: 
+#0288d1
+light: 
+#03a9f4
+dark: 
+#01579b
+contrastText: 
+#fff
+success: Object
+main: 
+#2e7d32
+light: 
+#4caf50
+dark: 
+#1b5e20
+contrastText: 
+#fff
+grey: Object
+50: 
+#fafafa
+100: 
+#f5f5f5
+200: 
+#eeeeee
+300: 
+#e0e0e0
+400: 
+#bdbdbd
+500: 
+#9e9e9e
+600: 
+#757575
+700: 
+#616161
+800: 
+#424242
+900: 
+#212121
+A100: 
+#f5f5f5
+A200: 
+#eeeeee
+A400: 
+#bdbdbd
+A700: 
+#616161
+contrastThreshold: 3
+getContrastText: f O()
+augmentColor: f $()
+tonalOffset: 0.2
+text: Object
+primary: 
+rgba(0, 0, 0, 0.87)
+secondary: 
+rgba(0, 0, 0, 0.6)
+disabled: 
+rgba(0, 0, 0, 0.38)
+divider: 
+rgba(0, 0, 0, 0.12)
+background: Object
+paper: 
+#fff
+default: 
+#fff
+action: Object
+active: 
+rgba(0, 0, 0, 0.54)
+hover: 
+rgba(0, 0, 0, 0.04)
+hoverOpacity: 0.04
+selected: 
+rgba(0, 0, 0, 0.08)
+selectedOpacity: 0.08
+disabled: 
+rgba(0, 0, 0, 0.26)
+disabledBackground: 
+rgba(0, 0, 0, 0.12)
+disabledOpacity: 0.38
+focus: 
+rgba(0, 0, 0, 0.12)
+focusOpacity: 0.12
+activatedOpacity: 0.12
+spacing: f r()
+mui: true
+shape: Object
+borderRadius: 4
+containerQueries: f a()
+up: f ()
+down: f ()
+between: f ()
+only: f ()
+not: f ()
+applyStyles: f u()
+internal_cache: Object
+mixins: Object
+toolbar: Object
+minHeight: 56
+@media (min-width:0px): Object
+@media (orientation: landscape): Object
+minHeight: 48
+@media (min-width:600px): Object
+minHeight: 64
+shadows: Array(25)
+0: "none"
+1: "0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12)"
+2: "0px 3px 1px -2px rgba(0,0,0,0.2),0px 2px 2px 0px rgba(0,0,0,0.14),0px 1px 5px 0px rgba(0,0,0,0.12)"
+3: "0px 3px 3px -2px rgba(0,0,0,0.2),0px 3px 4px 0px rgba(0,0,0,0.14),0px 1px 8px 0px rgba(0,0,0,0.12)"
+4: "0px 2px 4px -1px rgba(0,0,0,0.2),0px 4px 5px 0px rgba(0,0,0,0.14),0px 1px 10px 0px rgba(0,0,0,0.12)"
+5: "0px 3px 5px -1px rgba(0,0,0,0.2),0px 5px 8px 0px rgba(0,0,0,0.14),0px 1px 14px 0px rgba(0,0,0,0.12)"
+6: "0px 3px 5px -1px rgba(0,0,0,0.2),0px 6px 10px 0px rgba(0,0,0,0.14),0px 1px 18px 0px rgba(0,0,0,0.12)"
+7: "0px 4px 5px -2px rgba(0,0,0,0.2),0px 7px 10px 1px rgba(0,0,0,0.14),0px 2px 16px 1px rgba(0,0,0,0.12)"
+8: "0px 5px 5px -3px rgba(0,0,0,0.2),0px 8px 10px 1px rgba(0,0,0,0.14),0px 3px 14px 2px rgba(0,0,0,0.12)"
+9: "0px 5px 6px -3px rgba(0,0,0,0.2),0px 9px 12px 1px rgba(0,0,0,0.14),0px 3px 16px 2px rgba(0,0,0,0.12)"
+10: "0px 6px 6px -3px rgba(0,0,0,0.2),0px 10px 14px 1px rgba(0,0,0,0.14),0px 4px 18px 3px rgba(0,0,0,0.12)"
+11: "0px 6px 7px -4px rgba(0,0,0,0.2),0px 11px 15px 1px rgba(0,0,0,0.14),0px 4px 20px 3px rgba(0,0,0,0.12)"
+12: "0px 7px 8px -4px rgba(0,0,0,0.2),0px 12px 17px 2px rgba(0,0,0,0.14),0px 5px 22px 4px rgba(0,0,0,0.12)"
+13: "0px 7px 8px -4px rgba(0,0,0,0.2),0px 13px 19px 2px rgba(0,0,0,0.14),0px 5px 24px 4px rgba(0,0,0,0.12)"
+14: "0px 7px 9px -4px rgba(0,0,0,0.2),0px 14px 21px 2px rgba(0,0,0,0.14),0px 5px 26px 4px rgba(0,0,0,0.12)"
+15: "0px 8px 9px -5px rgba(0,0,0,0.2),0px 15px 22px 2px rgba(0,0,0,0.14),0px 6px 28px 5px rgba(0,0,0,0.12)"
+16: "0px 8px 10px -5px rgba(0,0,0,0.2),0px 16px 24px 2px rgba(0,0,0,0.14),0px 6px 30px 5px rgba(0,0,0,0.12)"
+17: "0px 8px 11px -5px rgba(0,0,0,0.2),0px 17px 26px 2px rgba(0,0,0,0.14),0px 6px 32px 5px rgba(0,0,0,0.12)"
+18: "0px 9px 11px -5px rgba(0,0,0,0.2),0px 18px 28px 2px rgba(0,0,0,0.14),0px 7px 34px 6px rgba(0,0,0,0.12)"
+19: "0px 9px 12px -6px rgba(0,0,0,0.2),0px 19px 29px 2px rgba(0,0,0,0.14),0px 7px 36px 6px rgba(0,0,0,0.12)"
+20: "0px 10px 13px -6px rgba(0,0,0,0.2),0px 20px 31px 3px rgba(0,0,0,0.14),0px 8px 38px 7px rgba(0,0,0,0.12)"
+21: "0px 10px 13px -6px rgba(0,0,0,0.2),0px 21px 33px 3px rgba(0,0,0,0.14),0px 8px 40px 7px rgba(0,0,0,0.12)"
+22: "0px 10px 14px -6px rgba(0,0,0,0.2),0px 22px 35px 3px rgba(0,0,0,0.14),0px 8px 42px 7px rgba(0,0,0,0.12)"
+23: "0px 11px 14px -7px rgba(0,0,0,0.2),0px 23px 36px 3px rgba(0,0,0,0.14),0px 9px 44px 8px rgba(0,0,0,0.12)"
+24: "0px 11px 15px -7px rgba(0,0,0,0.2),0px 24px 38px 3px rgba(0,0,0,0.14),0px 9px 46px 8px rgba(0,0,0,0.12)"
+typography: Object
+htmlFontSize: 16
+pxToRem: f ()
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontSize: 14
+fontWeightLight: 300
+fontWeightRegular: 400
+fontWeightMedium: 500
+fontWeightBold: 700
+h1: Object
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontWeight: 300
+fontSize: "6rem"
+lineHeight: 1.167
+letterSpacing: "-0.01562em"
+h2: Object
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontWeight: 300
+fontSize: "3.75rem"
+lineHeight: 1.2
+letterSpacing: "-0.00833em"
+h3: Object
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontWeight: 400
+fontSize: "3rem"
+lineHeight: 1.167
+letterSpacing: "0em"
+h4: Object
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontWeight: 400
+fontSize: "2.125rem"
+lineHeight: 1.235
+letterSpacing: "0.00735em"
+h5: Object
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontWeight: 400
+fontSize: "1.5rem"
+lineHeight: 1.334
+letterSpacing: "0em"
+h6: Object
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontWeight: 500
+fontSize: "1.25rem"
+lineHeight: 1.6
+letterSpacing: "0.0075em"
+subtitle1: Object
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontWeight: 400
+fontSize: "1rem"
+lineHeight: 1.75
+letterSpacing: "0.00938em"
+subtitle2: Object
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontWeight: 500
+fontSize: "0.875rem"
+lineHeight: 1.57
+letterSpacing: "0.00714em"
+body1: Object
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontWeight: 400
+fontSize: "1rem"
+lineHeight: 1.5
+letterSpacing: "0.00938em"
+body2: Object
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontWeight: 400
+fontSize: "0.875rem"
+lineHeight: 1.43
+letterSpacing: "0.01071em"
+button: Object
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontWeight: 500
+fontSize: "0.875rem"
+lineHeight: 1.75
+letterSpacing: "0.02857em"
+textTransform: "uppercase"
+caption: Object
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontWeight: 400
+fontSize: "0.75rem"
+lineHeight: 1.66
+letterSpacing: "0.03333em"
+overline: Object
+fontFamily: ""Roboto", "Helvetica", "Arial", sans-serif"
+fontWeight: 400
+fontSize: "0.75rem"
+lineHeight: 2.66
+letterSpacing: "0.08333em"
+textTransform: "uppercase"
+inherit: Object
+fontFamily: "inherit"
+fontWeight: "inherit"
+fontSize: "inherit"
+lineHeight: "inherit"
+letterSpacing: "inherit"
+motion: Object
+reducedMotion: "never"
+transitions: Object
+getAutoHeightDuration: f s()
+create: f ()
+easing: Object
+easeInOut: "cubic-bezier(0.4, 0, 0.2, 1)"
+easeOut: "cubic-bezier(0.0, 0, 0.2, 1)"
+easeIn: "cubic-bezier(0.4, 0, 1, 1)"
+sharp: "cubic-bezier(0.4, 0, 0.6, 1)"
+duration: Object
+shortest: 150
+shorter: 200
+short: 250
+standard: 300
+complex: 375
+enteringScreen: 225
+leavingScreen: 195
+zIndex: Object
+mobileStepper: 1000
+fab: 1050
+speedDial: 1050
+appBar: 1100
+drawer: 1200
+modal: 1300
+snackbar: 1400
+tooltip: 1500
+toRuntimeSource: f a()
+alpha: f alpha()
+lighten: f lighten()
+darken: f darken()
+
+
+
+Theme configuration variables
+
+Changing the theme configuration variables is the most effective way to match Material UI to your needs. The following sections cover the most important theme variables:
+
+.palette
+.typography
+.spacing
+.breakpoints
+.zIndex
+.transitions
+.components
+You can check out the default theme section to view the default theme in full.
+
+Custom variables
+
+When using Material UI's theme with MUI System or any other styling solution, it can be convenient to add additional variables to the theme so you can use them everywhere. For instance:
+
+const theme = createTheme({
+  status: {
+    danger: orange[500],
+  },
+});
+
+Copy
+vars is an autogenerated field for CSS theme variables. It will throw an error if you try to pass a value to it:
+
+createTheme({
+  vars: { ... }, // ❌ error
+})
+
+Copy
+TypeScript
+
+You have to use module augmentation to add new variables to the Theme and ThemeOptions.
+
+declare module '@mui/material/styles' {
+  interface Theme {
+    status: {
+      danger: string;
+    };
+  }
+  // allow configuration using `createTheme()`
+  interface ThemeOptions {
+    status?: {
+      danger?: string;
+    };
+  }
+}
+
+Copy
+Edit code
+<ThemeProvider theme={theme}>
+  <CustomCheckbox defaultChecked />
+</ThemeProvider>
+<ThemeProvider theme={theme}>
+  <CustomCheckbox defaultChecked />
+</ThemeProvider>
+Press Enter to start editing
+To add extra variables to the theme.palette, see palette customization.
+
+Theme builder
+
+The community has built great tools to build a theme:
+
+mui-theme-creator: A tool to help design and customize themes for the Material UI component library. Includes basic site templates to show various components and how they are affected by the theme
+MUI Theme Builder: A tool to generate, preview, and edit Material UI themes
+Material palette generator: The Material palette generator can be used to generate a palette for any color you input.
+Accessing the theme in a component
+
+You can access the theme variables inside your functional React components using the useTheme hook:
+
+import { useTheme } from '@mui/material/styles';
+
+function DeepChild() {
+  const theme = useTheme();
+  return <span>{`spacing ${theme.spacing}`}</span>;
+}
+
+Copy
+Nesting the theme
+
+You can nest multiple theme providers.
+
+Edit code
+<ThemeProvider theme={outerTheme}>
+  <Checkbox defaultChecked />
+  <ThemeProvider theme={innerTheme}>
+    <Checkbox defaultChecked />
+  </ThemeProvider>
+</ThemeProvider>
+<ThemeProvider theme={outerTheme}>
+  <Checkbox defaultChecked />
+  <ThemeProvider theme={innerTheme}>
+    <Checkbox defaultChecked />
+  </ThemeProvider>
+</ThemeProvider>
+Press Enter to start editing
+The inner theme will override the outer theme. You can extend the outer theme by providing a function:
+
+CSS theme variables
+
+To generate CSS variables from the theme, set cssVariables to true in the theme configuration and pass it to the ThemeProvider:
+
+const theme = createTheme({
+  cssVariables: true,
+});
+
+function App() {
+  return <ThemeProvider theme={theme}>...</ThemeProvider>;
+}
+
+Copy
+This generates a global stylesheet with the CSS theme variables:
+
+:root {
+  --mui-palette-primary-main: #1976d2;
+  /* ...other variables */
+}
+
+Copy
+All components under the ThemeProvider will use those CSS theme variables instead of raw values.
+
+Button styles
+- color: #1976d2;
++ color: var(--mui-palette-primary-main);
+
+Copy
+To learn more about this feature, see the CSS theme variables guide.
+
+API
+
+createTheme(options, ...args) => theme
+
+Generate a theme base on the options received. Then, pass it as a prop to ThemeProvider.
+
+Arguments
+options (object): Takes an incomplete theme object and adds the missing parts.
+...args (object[]): Deep merge the arguments with the about to be returned theme.
+Only the first argument (options) is processed by the createTheme() function. While passing multiple arguments currently works for backward compatibility, this behavior may be removed in future versions. To ensure your code remains forward-compatible, you should manually deep merge the theme objects and pass the result as a single object to createTheme().
+
+import { deepmerge } from '@mui/utils';
+import { createTheme } from '@mui/material/styles';
+
+const theme = createTheme(deepmerge(options1, options2));
+
+Copy
+Returns
+theme (object): A complete, ready-to-use theme object.
+
+Examples
+import { createTheme } from '@mui/material/styles';
+import { green, purple } from '@mui/material/colors';
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: purple[500],
+    },
+    secondary: {
+      main: green[500],
+    },
+  },
+});
+
+Copy
+Theme composition: using theme options to define other options
+When the value for a theme option is dependent on another theme option, you should compose the theme in steps.
+
+import { createTheme } from '@mui/material/styles';
+
+let theme = createTheme({
+  palette: {
+    primary: {
+      main: '#0052cc',
+    },
+    secondary: {
+      main: '#edf2ff',
+    },
+  },
+});
+
+theme = createTheme(theme, {
+  palette: {
+    info: {
+      main: theme.palette.secondary.main,
+    },
+  },
+});
+
+Copy
+Think of creating a theme as a two-step composition process: first, you define the basic design options; then, you'll use these design options to compose other options.
+
+WARNING: theme.vars is a private field used for CSS variables support. Please use another name for a custom object.
+
+Merging className and style props in defaultProps
+
+By default, when a component has defaultProps defined in the theme, props passed to the component override the default props completely.
+
+import { createTheme } from '@mui/material/styles';
+
+const theme = createTheme({
+  components: {
+    MuiButton: {
+      defaultProps: {
+        className: 'default-button-class',
+        style: { marginTop: 8 },
+      },
+    },
+  },
+});
+
+// className will be: "custom-button-class" (default ignored)
+// style will be: { color: 'blue' } (default ignored)
+<Button className="custom-button-class" style={{ color: 'blue' }}>
+  Click me
+</Button>;
+
+Copy
+You can change this behavior by configuring the theme to merge className and style props instead of replacing them.
+
+To do this, set theme.components.mergeClassNameAndStyle to true:
+
+import { createTheme } from '@mui/material/styles';
+
+const theme = createTheme({
+  components: {
+    mergeClassNameAndStyle: true,
+    MuiButton: {
+      defaultProps: {
+        className: 'default-button-class',
+        style: { marginTop: 8 },
+      },
+    },
+  },
+});
+
+Copy
+Here's what the example above looks like with this configuration:
+
+// className will be: "default-button-class custom-button-class"
+// style will be: { marginTop: 8, color: 'blue' }
+<Button className="custom-button-class" style={{ color: 'blue' }}>
+  Click me
+</Button>
+
+Copy
+responsiveFontSizes(theme, options) => theme
+
+Generate responsive typography settings based on the options received.
+
+Arguments
+theme (object): The theme object to enhance.
+options (object [optional]):
+breakpoints (array<string> [optional]): Default to ['sm', 'md', 'lg']. Array of breakpoints (identifiers).
+disableAlign (bool [optional]): Default to false. Whether font sizes change slightly so line heights are preserved and align to Material Design's 4px line height grid. This requires a unitless line height in the theme's styles.
+factor (number [optional]): Default to 2. This value determines the strength of font size resizing. The higher the value, the less difference there is between font sizes on small screens. The lower the value, the bigger font sizes for small screens. The value must be greater than 1.
+variants (array<string> [optional]): Default to all. The typography variants to handle.
+Returns
+theme (object): The new theme with a responsive typography.
+
+Examples
+import { createTheme, responsiveFontSizes } from '@mui/material/styles';
+
+let theme = createTheme();
+theme = responsiveFontSizes(theme);
+
+Copy
+enhanceHighContrast(theme, tokens) => theme
+
+Applies @media (forced-colors: active) overrides to a theme, improving component visibility in Windows High Contrast / Forced Colors mode. Available with v9.1.0. It accepts a fully-created theme and returns an enhanced version of it.
+
+Arguments
+theme (object): The theme object to enhance.
+tokens (object [optional]): An object of CSS system color keywords to override individual defaults.
+Token	Default	Description
+disabled	GrayText	Color for disabled elements
+error	ActiveText	Color for error states
+selectedBackground	SelectedItem	Background color for selected items
+selectedText	SelectedItemText	Text color on selected items
+activeBackground	Highlight	Background color for active/toggled controls
+activeText	HighlightText	Text color on active/toggled controls
+buttonBorder	ButtonBorder	Border color for interactive controls
+buttonText	ButtonText	Text/icon color on buttons
+canvas	Canvas	Background color for the page/canvas
+Returns
+theme (object): The new theme with forced-colors overrides applied to affected components.
+
+Examples
+import { createTheme, enhanceHighContrast } from '@mui/material/styles';
+
+// Use defaults
+let theme = createTheme();
+theme = enhanceHighContrast(theme);
+
+Copy
+// Override individual tokens
+let theme = createTheme();
+theme = enhanceHighContrast(theme, {
+  activeBackground: 'SelectedItem',
+  activeText: 'SelectedItemText',
+});
+
+Copy
+unstable_createMuiStrictModeTheme(options, ...args) => theme
+
+WARNING: Do not use this method in production.
+
+Generates a theme that reduces the amount of warnings inside React.StrictMode like Warning: findDOMNode is deprecated in StrictMode.
+
+Requirements
+Currently unstable_createMuiStrictModeTheme adds no additional requirements.
+
+Arguments
+options (object): Takes an incomplete theme object and adds the missing parts.
+...args (object[]): Deep merge the arguments with the about to be returned theme.
+Returns
+theme (object): A complete, ready-to-use theme object.
+
+Examples
+import { unstable_createMuiStrictModeTheme } from '@mui/material/styles';
+
+const theme = unstable_createMuiStrictModeTheme();
+
+function App() {
+  return (
+    <React.StrictMode>
+      <ThemeProvider theme={theme}>
+        <LandingPage />
+      </ThemeProvider>
+    </React.StrictMode>
+  );
+}
+
+Copy
+ThemeProvider
+
+This component takes a theme prop and applies it to the entire React tree that it is wrapping around. It should preferably be used at the root of your component tree.
+
+Props
+Name	Type	Description
+children *	node	Your component tree.
+theme *	union: object | func	A theme object, usually the result of createTheme(). The provided theme will be merged with the default theme. You can provide a function to extend the outer theme.
+Examples
+import * as React from 'react';
+import { red } from '@mui/material/colors';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: red[500],
+    },
+  },
+});
+
+function App() {
+  return <ThemeProvider theme={theme}>...</ThemeProvider>;
+}
+
+
+
+Dark mode
+Material UI comes with two palette modes: light (the default) and dark.
+ads via Carbon
+Bruno tests your APIs and works with Git, your IDE, and your agents. Free and open source.
+ads via Carbon
+
+Use the Material UI theming agent skill to give your AI coding assistant full context on dark mode, color schemes, and SSR behavior.
+
+Dark mode only
+
+You can make your application use the dark theme as the default—regardless of the user's preference—by adding mode: 'dark' to the createTheme() helper:
+
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+  },
+});
+
+export default function App() {
+  return (
+    <ThemeProvider theme={darkTheme}>
+      <CssBaseline />
+      <main>This app is using the dark mode</main>
+    </ThemeProvider>
+  );
+}
+
+Copy
+Adding mode: 'dark' to the createTheme() helper modifies several palette values, as shown in the following demo:
+
+Typography
+
+palette.text.primary
+
+#fff
+
+palette.text.secondary
+
+rgba(255, 255, 255, 0.7)
+
+palette.text.disabled
+
+rgba(255, 255, 255, 0.5)
+
+Buttons
+
+palette.action.active
+
+#fff
+
+palette.action.hover
+
+rgba(255, 255, 255, 0.08)
+
+palette.action.selected
+
+rgba(255, 255, 255, 0.16)
+
+palette.action.disabled
+
+rgba(255, 255, 255, 0.3)
+
+palette.action.disabledBackground
+
+rgba(255, 255, 255, 0.12)
+
+Background
+
+palette.background.default
+
+#121212
+
+palette.background.paper
+
+#121212
+
+Divider
+
+palette.divider
+
+rgba(255, 255, 255, 0.12)
+
+Adding <CssBaseline /> inside of the <ThemeProvider> component will also enable dark mode for the app's background.
+
+Setting the dark mode this way only works if you are using the default palette. If you have a custom palette, make sure that you have the correct values based on the mode. The next section explains how to do this.
+
+Overriding the dark palette
+
+To override the default palette, provide a palette object with custom colors in hex, RGB, or HSL format:
+
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#ff5252',
+    },
+  },
+});
+
+Copy
+Learn more about palette structure in the Palette documentation.
+
+System preference
+
+Some users set a preference for light or dark mode through their operating system—either systemwide, or for individual user agents. The following sections explain how to apply these preferences to an app's theme.
+
+Built-in support
+
+Use the colorSchemes node to build an application with multiple color schemes. The built-in color schemes are light and dark which can be enabled by setting the value to true.
+
+The light color scheme is enabled by default, so you only need to set the dark color scheme:
+
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+
+const theme = createTheme({
+  colorSchemes: {
+    dark: true,
+  },
+});
+
+function App() {
+  return <ThemeProvider theme={theme}>...</ThemeProvider>;
+}
+
+Copy
+When colorSchemes is provided, the following features are activated:
+
+Automatic switching between light and dark color schemes based on the user's preference
+Synchronization between window tabs—changes to the color scheme in one tab are applied to all other tabs
+An option to disable transitions when the color scheme changes
+The colorSchemes API is an enhanced version of the earlier and more limited palette API—the aforementioned features are only accessible with the colorSchemes API, so we recommend using it over the palette API. If both colorSchemes and palette are provided, palette will take precedence.
+
+To test the system preference feature, follow the guide on emulating the CSS media feature prefers-color-scheme.
+
+Accessing media prefers-color-scheme
+
+You can make use of this preference with the useMediaQuery hook and the prefers-color-scheme media query.
+
+The following demo shows how to check the user's preference in their OS or browser settings:
+
+import * as React from 'react';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+
+function App() {
+  const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
+  return <div>prefersDarkMode: {prefersDarkMode.toString()}</div>;
+}
+
+Copy
+Toggling color mode
+
+To give your users a way to toggle between modes for built-in support, use the useColorScheme hook to read and update the mode.
+
+The mode is always undefined on first render, so make sure to handle this case as shown in the demo below—otherwise you may encounter a hydration mismatch error.
+
+Theme
+System
+Light
+Dark
+Storage manager
+
+By default, the built-in support for color schemes uses the browser's localStorage API to store the user's mode and scheme preference.
+
+To use a different storage manager, create a custom function with this signature:
+
+type Unsubscribe = () => void;
+
+function storageManager(params: { key: string }): {
+  get: (defaultValue: any) => any;
+  set: (value: any) => void;
+  subscribe: (handler: (value: any) => void) => Unsubscribe;
+};
+
+Copy
+Then pass it to the storageManager prop of the ThemeProvider component:
+
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import type { StorageManager } from '@mui/material/styles';
+
+const theme = createTheme({
+  colorSchemes: {
+    dark: true,
+  },
+});
+
+function storageManager(params): StorageManager {
+  return {
+    get: (defaultValue) => {
+      // Your implementation
+    },
+    set: (value) => {
+      // Your implementation
+    },
+    subscribe: (handler) => {
+      // Your implementation
+      return () => {
+        // cleanup
+      };
+    },
+  };
+}
+
+function App() {
+  return (
+    <ThemeProvider theme={theme} storageManager={storageManager}>
+      ...
+    </ThemeProvider>
+  );
+}
+
+Copy
+If you are using the InitColorSchemeScript component to prevent SSR flickering, you have to include the localStorage implementation in your custom storage manager.
+
+Disable storage
+
+To disable the storage manager, pass null to the storageManager prop:
+
+<ThemeProvider theme={theme} storageManager={null}>
+  ...
+</ThemeProvider>
+
+Copy
+Disabling the storage manager will cause the app to reset to its default mode whenever the user refreshes the page.
+
+Disable transitions
+
+To instantly switch between color schemes with no transition, apply the disableTransitionOnChange prop to the ThemeProvider component:
+
+<ThemeProvider theme={theme} disableTransitionOnChange>
+  ...
+</ThemeProvider>
+
+Copy
+Disable double rendering
+
+By default, the ThemeProvider rerenders when the theme contains light and dark color schemes to prevent SSR hydration mismatches.
+
+To disable this behavior, use the noSsr prop:
+
+<ThemeProvider theme={theme} noSsr>
+
+Copy
+noSsr is useful if you are building:
+
+A client-only application, such as a single-page application (SPA). This prop will optimize the performance and prevent the dark mode flickering when users refresh the page.
+A server-rendered application with Suspense. However, you must ensure that the server render output matches the initial render output on the client.
+Setting the default mode
+
+When colorSchemes is provided, the default mode is system, which means the app uses the system preference when users first visit the site.
+
+To set a different default mode, pass the defaultMode prop to the ThemeProvider component:
+
+<ThemeProvider theme={theme} defaultMode="dark">
+
+Copy
+The defaultMode value can be 'light', 'dark', or 'system'.
+
+InitColorSchemeScript component
+
+If you are using the InitColorSchemeScript component to prevent SSR flicker, you have to set the defaultMode with the same value you passed to the ThemeProvider component:
+
+<InitColorSchemeScript defaultMode="dark">
+
+Copy
+Styling in dark mode
+
+Use the theme.applyStyles() utility to apply styles for a specific mode.
+
+We recommend using this function over checking theme.palette.mode to switch between styles as it has more benefits:
+
+It can be used with Pigment CSS, our in-house zero-runtime CSS-in-JS solution.
+It is generally more readable and maintainable.
+It is slightly more performant as it doesn't require to do style recalculation but the bundle size of SSR generated styles is larger.
+Usage
+
+With the styled function:
+
+import { styled } from '@mui/material/styles';
+
+const MyComponent = styled('div')(({ theme }) => [
+  {
+    color: '#fff',
+    backgroundColor: theme.palette.primary.main,
+    '&:hover': {
+      boxShadow: theme.shadows[3],
+      backgroundColor: theme.palette.primary.dark,
+    },
+  },
+  theme.applyStyles('dark', {
+    backgroundColor: theme.palette.secondary.main,
+    '&:hover': {
+      backgroundColor: theme.palette.secondary.dark,
+    },
+  }),
+]);
+
+Copy
+With the sx prop:
+
+import Button from '@mui/material/Button';
+
+<Button
+  sx={[
+    (theme) => ({
+      color: '#fff',
+      backgroundColor: theme.palette.primary.main,
+      '&:hover': {
+        boxShadow: theme.shadows[3],
+        backgroundColor: theme.palette.primary.dark,
+      },
+    }),
+    (theme) =>
+      theme.applyStyles('dark', {
+        backgroundColor: theme.palette.secondary.main,
+        '&:hover': {
+          backgroundColor: theme.palette.secondary.dark,
+        },
+      }),
+  ]}
+>
+  Submit
+</Button>;
+
+Copy
+When cssVariables: true, styles applied with theme.applyStyles() have higher specificity than those defined outside of it. So if you need to override styles, you must also use theme.applyStyles() as shown below:
+
+const BaseButton = styled('button')(({ theme }) =>
+  theme.applyStyles('dark', {
+    backgroundColor: 'white',
+  }),
+);
+
+const AliceblueButton = styled(BaseButton)({
+  backgroundColor: 'aliceblue', // In dark mode, backgroundColor will be white as theme.applyStyles() has higher specificity
+});
+
+const PinkButton = styled(BaseButton)(({ theme }) =>
+  theme.applyStyles('dark', {
+    backgroundColor: 'pink', // In dark mode, backgroundColor will be pink
+  }),
+);
+
+Copy
+API
+
+theme.applyStyles(mode, styles) => CSSObject
+
+Apply styles for a specific mode.
+
+Arguments
+mode ('light' | 'dark') - The mode for which the styles should be applied.
+styles (CSSObject) - An object that contains the styles to be applied for the specified mode.
+Overriding applyStyles
+You can override theme.applyStyles() with a custom function to gain complete control over the values it returns. Please review the source code to understand how the default implementation works before overriding it. For instance, if you need the function to return a string instead of an object so it can be used inside template literals:
+
+const theme = createTheme({
+  cssVariables: {
+    colorSchemeSelector: '.mode-%s',
+  },
+  colorSchemes: {
+    dark: {},
+    light: {},
+  },
+  applyStyles: function (key: string, styles: any) {
+    // return a string instead of an object
+    return `*:where(.mode-${key}) & {${styles}}`;
+  },
+});
+
+const StyledButton = styled('button')`
+  ${theme.applyStyles(
+    'dark', `
+      background: white;
+    `
+  )}
+`;
+
+Copy
+Codemod
+
+We provide codemods to migrate your codebase from using theme.palette.mode to use theme.applyStyles(). You can run each codemod below or all of them at once.
+
+npx @mui/codemod@latest v6.0.0/styled <path/to/folder-or-file>
+npx @mui/codemod@latest v6.0.0/sx-prop <path/to/folder-or-file>
+npx @mui/codemod@latest v6.0.0/theme-v6 <path/to/theme-file>
+
+Copy
+Run v6.0.0/theme-v6 against the file that contains the custom styleOverrides. Ignore this codemod if you don't have a custom theme.
+
+Dark mode flicker
+
+The problem
+
+Server-rendered apps are built before they reach the user's device. This means they can't automatically adjust to the user's preferred color scheme when first loaded.
+
+Here's what typically happens:
+
+You load the app and set it to dark mode.
+You refresh the page.
+The app briefly appears in light mode (the default).
+Then it switches back to dark mode once the app fully loads.
+This "flash" of light mode happens every time you open the app, as long as your browser remembers your dark mode preference.
+
+This sudden change can be jarring, especially in low-light environments. It can strain your eyes and disrupt your experience, particularly if you interact with the app during this transition.
+
+To better understand this issue, take a look at the animated image below:
+
+An example video that shows a page that initially loads correctly in dark mode but quickly flickers to light mode.
+The solution: CSS variables
+
+Solving this problem requires a novel approach to styling and theming. (See this RFC on CSS variables support to learn more about the implementation of this feature.)
+
+For applications that need to support light and dark mode using CSS media prefers-color-scheme, enabling the CSS variables feature fixes the issue.
+
+But if you want to be able to toggle between modes manually, avoiding the flicker requires a combination of CSS variables and the InitColorSchemeScript component. Check out the Preventing SSR flicker section for more details.

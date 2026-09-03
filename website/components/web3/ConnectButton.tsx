@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { walletConnected, walletDisconnected } from "@/redux/slices/auth.slice";
@@ -22,6 +22,7 @@ export function ConnectButton() {
   const { appKitReady } = useAppSelector((s) => s.web3);
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
+  const [copied, setCopied] = useState(false);
 
   // Sync wagmi account state into Redux on every change
   useEffect(() => {
@@ -43,21 +44,48 @@ export function ConnectButton() {
   if (isConnected && address) {
     return (
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 px-3 py-1 bg-surface-tertiary rounded-lg">
-          <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+        <div
+          className="relative flex items-center gap-2 px-3 py-1 bg-surface-3 rounded-lg cursor-pointer group"
+          onClick={() => {
+            navigator.clipboard.writeText(address);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }}
+        >
+          <div className="h-2 w-2 bg-success rounded-full"></div>
           <span className="text-sm font-mono">
             {address.slice(0, 6)}...{address.slice(-4)}
           </span>
+          {copied && (
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-surface-1 text-xs text-surface-11 rounded shadow-lg whitespace-nowrap">
+              Copied!
+            </div>
+          )}
         </div>
         <Button
           variant="outline"
           size="sm"
+          className="w-8 h-8 p-0 flex items-center justify-center"
+          title="Disconnect wallet"
           onClick={() => {
             dispatch(walletDisconnected());
             disconnect();
           }}
         >
-          Disconnect
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+            <line x1="12" y1="2" x2="12" y2="12" />
+          </svg>
         </Button>
       </div>
     );

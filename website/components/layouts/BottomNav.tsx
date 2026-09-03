@@ -7,6 +7,7 @@ import React from "react";
 const tabs = [
   { href: "/app/explore", label: "Explore", icon: "globe" },
   { href: "/app/trips", label: "Trips", icon: "plane" },
+  { href: "/app/chat", label: "Messages", icon: "message" },
   { href: "/app/orders", label: "Orders", icon: "box" },
   { href: "/app/profile", label: "Profile", icon: "user" },
 ];
@@ -30,6 +31,11 @@ const icons: Record<string, React.ReactNode> = {
       <path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
     </svg>
   ),
+  message: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/>
+    </svg>
+  ),
   user: (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -41,7 +47,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center justify-around h-16 z-50 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 bg-surface-1 border-t border-border flex items-center justify-around h-16 z-50 md:hidden">
       {tabs.map((tab) => {
         const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
         return (
@@ -50,11 +56,11 @@ export function BottomNav() {
             href={tab.href}
             className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors ${
               isActive
-                ? "text-green-700"
-                : "text-gray-400 hover:text-gray-600"
+                ? "text-success"
+                : "text-muted hover:text-secondary"
             }`}
           >
-            <span className={`${isActive ? "text-green-700" : "text-gray-400"}`}>
+            <span className={`${isActive ? "text-success" : "text-muted"}`}>
               {icons[tab.icon]}
             </span>
             <span className="text-xs font-medium">{tab.label}</span>

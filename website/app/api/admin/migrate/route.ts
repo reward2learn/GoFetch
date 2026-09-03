@@ -17,6 +17,13 @@ export async function POST(req: NextRequest) {
       ADD COLUMN IF NOT EXISTS pickup_instructions TEXT;
     `);
 
+    // Add theme column to users table
+    try {
+      await prisma.$executeRaw`ALTER TABLE users ADD COLUMN IF NOT EXISTS theme VARCHAR(10) DEFAULT 'system'`;
+    } catch (e) {
+      // Column may already exist
+    }
+
     return NextResponse.json({ success: true, message: "Migration completed" });
   } catch (error) {
     console.error("Migration error:", error);

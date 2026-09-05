@@ -27,51 +27,93 @@ export async function POST(req: NextRequest) {
     const walletAddress = parsed.data.address || parsed.data.walletAddress || "";
     const normalizedAddress = walletAddress.toLowerCase();
 
-    // Find or create user
-    let user = await prisma.user.findFirst({
-      where: { walletAddress: normalizedAddress },
-    });
-
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          walletAddress: normalizedAddress,
-          name: `${normalizedAddress.slice(0, 6)}...${normalizedAddress.slice(-4)}`,
-          email: `${normalizedAddress.slice(0, 10)}@wallet.local`,
-          token: `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        },
-      });
+    // Basic SIWE message validation (format check only - signature provides authenticity)
+    const message = parsed.data.message;
+    const messageLower = message.toLowerCase();
+    if (!messageLower.includes(normalizedAddress)) {
+      return NextResponse.json(
+        { error: "Address mismatch in message" },
+        { status: 400 }
+      );
     }
 
-    // Generate JWT
-    const token = await createToken({
-      userId: user.id,
-      walletAddress: user.walletAddress,
-    });
+    try {
+      // Find or create user
+      let user = await prisma.user.findUnique({
+        where: { walletAddress: normalizedAddress },
+      });
 
-    const response = NextResponse.json({
-      success: true,
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            walletAddress: normalizedAddress,
+            name: `${normalizedAddress.slice(0, 6)}...${normalizedAddress.slice(-4)}`,
+            email: `${normalizedAddress.slice(0, 10)}@wallet.local`,
+            token: `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          },
+        });
+      }
+
+      // Generate JWT
+      const token = await createToken({
+        userId: user.id,
         walletAddress: user.walletAddress,
-        role: user.role,
-      },
-    });
+      });
 
-    response.cookies.set("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-    });
+      const response = NextResponse.json({
+        success: true,
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          walletAddress: user.walletAddress,
+          role: user.role,
+        },
+      });
 
-    return response;
+      response.cookies.set("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/",
+      });
+
+      return response;
+    } catch (dbError) {
+      // DB down (e.g. Neon 402) — generate JWT from address directly as fallback
+      console.error("[auth/verify] DB error, using address-based fallback:", dbError);
+      
+      const token = await createToken({
+        userId: normalizedAddress,
+        walletAddress: normalizedAddress,
+      });
+
+      const response = NextResponse.json({
+        success: true,
+        token,
+        user: {
+          id: normalizedAddress,
+          name: `${normalizedAddress.slice(0, 6)}...${normalizedAddress.slice(-4)}`,
+          email: `${normalizedAddress.slice(0, 10)}@wallet.local`,
+          walletAddress: normalizedAddress,
+          role: "buyer",
+        },
+      });
+
+      response.cookies.set("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/",
+      });
+
+      return response;
+    }
   } catch (error) {
-    console.error("[auth/verify]", error);
+    console.error("[auth/verify] Error:", error);
     return NextResponse.json({ error: "Verification failed" }, { status: 500 });
   }
 }

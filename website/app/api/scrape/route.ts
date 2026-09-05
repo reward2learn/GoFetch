@@ -8,6 +8,8 @@ interface ScrapedProduct {
   currency: string | null;
   category: string | null;
   siteName: string | null;
+  country: string | null;
+  city: string | null;
 }
 
 function extractMeta(html: string, property: string): string | null {
@@ -73,6 +75,92 @@ function extractCategory(html: string, title: string | null): string | null {
   return null;
 }
 
+/** Extract country and city from URL domain and page content */
+function extractLocation(url: string, html: string): { country: string | null; city: string | null } {
+  const urlLower = url.toLowerCase();
+  const htmlLower = html.toLowerCase();
+
+  // Known duty-free / airport store domain mappings
+  const DOMAIN_MAP: Record<string, { country: string; city: string }> = {
+    "heinemann": { country: "Australia", city: "Sydney" },
+    "dufry": { country: "Australia", city: "Sydney" },
+    "lagardere": { country: "Australia", city: "Sydney" },
+    "junction": { country: "Australia", city: "Sydney" },
+    "dutyfree": { country: "Australia", city: "Sydney" },
+    "woolworths": { country: "Australia", city: "Sydney" },
+    "myer": { country: "Australia", city: "Sydney" },
+    "davidjones": { country: "Australia", city: "Sydney" },
+    "amazon.com.au": { country: "Australia", city: "Sydney" },
+    "amazon.co.uk": { country: "United Kingdom", city: "London" },
+    "amazon.de": { country: "Germany", city: "Frankfurt" },
+    "amazon.fr": { country: "France", city: "Paris" },
+    "amazon.co.jp": { country: "Japan", city: "Tokyo" },
+    "amazon.sg": { country: "Singapore", city: "Singapore" },
+    "lazada.sg": { country: "Singapore", city: "Singapore" },
+    "shopee.sg": { country: "Singapore", city: "Singapore" },
+    "shopee.co.id": { country: "Indonesia", city: "Bali" },
+    "tokopedia.com": { country: "Indonesia", city: "Bali" },
+    "bhinneka.com": { country: "Indonesia", city: "Bali" },
+    " zalora": { country: "Singapore", city: "Singapore" },
+  };
+
+  // Check domain mappings
+  for (const [domain, loc] of Object.entries(DOMAIN_MAP)) {
+    if (urlLower.includes(domain)) {
+      return { country: loc.country, city: loc.city };
+    }
+  }
+
+  // Try to extract from HTML content (address, location meta tags)
+  const addressMatch = html.match(/(?:address|location|city|country)['"]?\s*[:=]\s*['"]([^'"]+)['"]/i);
+  if (addressMatch) {
+    // Try to find country in the address
+    const countries = ["Australia", "United Kingdom", "Germany", "France", "Japan", "Singapore", "Indonesia", "United States", "Canada", "Thailand", "Malaysia", "Philippines", "Vietnam", "South Korea", "China", "India", "New Zealand", "Fiji", "Bali"];
+    for (const c of countries) {
+      if (htmlLower.includes(c.toLowerCase())) {
+        // Try to find city near the country mention
+        const cityPatterns = [
+          new RegExp(`(sydney|melbourne|brisbane|perth|auckland|wellington|singapore|tokyo|osaka|london|paris|frankfurt|berlin|bali|jakarta|bangkok|kuala lumpur|manila|ho chi minh|hanoi|seoul|beijing|shanghai|mumbai|delhi|new york|los angeles|san francisco|toronto|vancouver|nadi)[^,]*,?\\s*${c}`, "i"),
+          new RegExp(`${c}[^,]*,?\\s*(sydney|melbourne|brisbane|perth|auckland|wellington|singapore|tokyo|osaka|london|paris|frankfurt|berlin|bali|jakarta|bangkok|kuala lumpur|manila|ho chi minh|hanoi|seoul|beijing|shanghai|mumbai|delhi|new york|los angeles|san francisco|toronto|vancouver|nadi)`, "i"),
+        ];
+        for (const pattern of cityPatterns) {
+          const cityMatch = html.match(pattern);
+          if (cityMatch) {
+            const city = cityMatch[1] || cityMatch[2];
+            return { country: c, city: city.charAt(0).toUpperCase() + city.slice(1) };
+          }
+        }
+        return { country: c, city: null };
+      }
+    }
+  }
+
+  // Try to extract from URL path segments
+  const urlPath = urlLower.replace(/^https?:\/\//, "");
+  const cityCountryPatterns: Array<{ pattern: RegExp; country: string; city: string }> = [
+    { pattern: /sydney|syd|au\.heinemann|au\.dufry/i, country: "Australia", city: "Sydney" },
+    { pattern: /melbourne|mbl|air\.au/i, country: "Australia", city: "Melbourne" },
+    { pattern: /brisbane|bne/i, country: "Australia", city: "Brisbane" },
+    { pattern: /perth|per/i, country: "Australia", city: "Perth" },
+    { pattern: /auckland|akl|nz\//i, country: "New Zealand", city: "Auckland" },
+    { pattern: /singapore|sg\//i, country: "Singapore", city: "Singapore" },
+    { pattern: /tokyo|tyo|jp\//i, country: "Japan", city: "Tokyo" },
+    { pattern: /london|ldn|uk\//i, country: "United Kingdom", city: "London" },
+    { pattern: /paris|cdg|fr\//i, country: "France", city: "Paris" },
+    { pattern: /bali|dps|id\//i, country: "Indonesia", city: "Bali" },
+    { pattern: /bangkok|bkk|th\//i, country: "Thailand", city: "Bangkok" },
+    { pattern: /kualalumpur|kul|my\//i, country: "Malaysia", city: "Kuala Lumpur" },
+  ];
+
+  for (const { pattern, country, city } of cityCountryPatterns) {
+    if (pattern.test(urlPath) || pattern.test(htmlLower.substring(0, 5000))) {
+      return { country, city };
+    }
+  }
+
+  return { country: null, city: null };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { url } = await req.json();
@@ -109,6 +197,7 @@ export async function POST(req: NextRequest) {
     const { price, currency } = extractPrice(html);
     const category = extractCategory(html, title);
     const siteName = extractMeta(html, "og:site_name") || null;
+    const { country, city } = extractLocation(url, html);
 
     const product: ScrapedProduct = {
       title: title?.substring(0, 200) || null,
@@ -118,6 +207,8 @@ export async function POST(req: NextRequest) {
       currency,
       category,
       siteName,
+      country,
+      city,
     };
 
     return NextResponse.json(product);

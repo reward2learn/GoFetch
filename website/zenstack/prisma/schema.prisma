@@ -39,6 +39,7 @@ enum RequestStatus {
   in_progress
   completed
   cancelled
+  archived
 }
 
 enum OrderStatus {
@@ -134,8 +135,10 @@ model Request {
   title              String
   description        String?
   category           String?
+  outletName         String?        @map("outlet_name")
   imageUrl           String?        @map("image_url")
   productUrl         String?        @map("product_url")
+  invoiceUrl         String?        @map("invoice_url")
   deliveryType       DeliveryType   @default(standard) @map("delivery_type")
   pickupLocation     String?        @map("pickup_location")
   pickupInstructions String?        @map("pickup_instructions")
@@ -148,6 +151,7 @@ model Request {
   toCity             String         @map("to_city")
   deadline           DateTime?
   status             RequestStatus  @default(open)
+  archiveReason      String?        @map("archive_reason")
   createdAt          DateTime       @default(now()) @map("created_at")
   deletedAt          DateTime?      @map("deleted_at")
   buyer              User           @relation(fields: [buyerId], references: [id])
@@ -335,9 +339,9 @@ model Notification {
 
 /// Global app settings (key-value store for theme, config, etc.)
 model AppSetting {
-  key       String   @id
+  key       String   @id()
   value     Json
-  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @updatedAt() @map("updated_at")
 
   @@map("app_settings")
 }

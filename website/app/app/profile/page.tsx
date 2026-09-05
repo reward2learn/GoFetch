@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
 import { useAppSelector } from "@/redux/hooks";
+import Link from "next/link";
 
 export default function ProfilePage() {
   const { address } = useAccount();
@@ -229,7 +230,7 @@ export default function ProfilePage() {
         {/* Stats row */}
         <div className="flex items-center gap-8">
           <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1 text-orange-500 mb-1">
+            <div className="flex items-center gap-1 text-success mb-1">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
               </svg>
@@ -238,7 +239,7 @@ export default function ProfilePage() {
             <span className="text-xs text-muted">Rating</span>
           </div>
           <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1 text-orange-500 mb-1">
+            <div className="flex items-center gap-1 text-success mb-1">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
                 <path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
@@ -248,7 +249,7 @@ export default function ProfilePage() {
             <span className="text-xs text-muted">Orders</span>
           </div>
           <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1 text-orange-500 mb-1">
+            <div className="flex items-center gap-1 text-success mb-1">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
               </svg>
@@ -259,13 +260,13 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Wallet Info — above How you're protected */}
+      {/* Account Info — above How you're protected */}
       {address && (
         <div
           className="bg-surface-1 rounded-2xl border border-border p-5 cursor-pointer hover:shadow-md transition-shadow relative"
           onClick={copyAddress}
         >
-          <h2 className="text-lg font-bold mb-3">Wallet</h2>
+          <h2 className="text-lg font-bold mb-3">Account</h2>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted">Address</span>
             <span className="font-mono text-xs flex items-center gap-2">
@@ -335,6 +336,30 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Settings link */}
+      <div className="bg-surface-1 rounded-2xl border border-border p-5">
+        <Link
+          href="/app/settings"
+          className="flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-surface-2 rounded-xl flex items-center justify-center shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </div>
+            <div>
+              <p className="font-semibold text-sm">Settings</p>
+              <p className="text-xs text-muted">Account, theme, and preferences</p>
+            </div>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted group-hover:text-primary-color transition-colors">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </Link>
       </div>
     </div>
   );

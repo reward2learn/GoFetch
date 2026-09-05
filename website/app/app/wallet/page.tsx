@@ -6,6 +6,7 @@ import { sepolia } from "wagmi/chains";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { Badge } from "@/components/ui/Badge";
 import { formatAddress } from "@/lib/utils";
 
 // ERC20 balanceOf ABI (minimal)
@@ -76,7 +77,7 @@ export default function WalletPage() {
     setWithdrawMsg(null);
     await new Promise((r) => setTimeout(r, 1500));
     setWithdrawSending(false);
-    setWithdrawMsg({ type: "success", text: `Withdrawal of ${withdrawAmount} USDC submitted. Funds will arrive shortly.` });
+    setWithdrawMsg({ type: "success", text: `Claim of ${withdrawAmount} USDC submitted. Funds will arrive shortly.` });
     setWithdrawAddr("");
     setWithdrawAmount("");
   };
@@ -87,9 +88,9 @@ export default function WalletPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-primary-color">Wallet</h1>
+          <h1 className="text-3xl font-bold text-primary-color">Account</h1>
           <p className="text-muted">
-            Manage your USDC and ETH
+            Manage your account balance
           </p>
         </div>
       </div>
@@ -102,14 +103,16 @@ export default function WalletPage() {
             {(usdcLoading || ethLoading) ? (
               <span className="animate-pulse">Loading...</span>
             ) : (
-              `${usdcBalance} USDC`
+              <>${usdcBalance}</>
             )}
           </p>
-          <p className="text-lg text-white/70 mb-4">
-            {ethFormatted} ETH
-          </p>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <p className="text-lg text-white/70">
+              {ethFormatted} ETH
+            </p>
+          </div>
           <p className="text-sm text-white/60 mb-1 cursor-pointer hover:text-white/80 transition-colors relative inline-block" onClick={copyAddress}>
-            Wallet: {address ? formatAddress(address) : "Not connected"}
+            Account: {address ? formatAddress(address) : "Not connected"}
             {copied && (
               <span className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-white text-primary text-xs rounded-full shadow-lg whitespace-nowrap">Copied!</span>
             )}
@@ -118,13 +121,13 @@ export default function WalletPage() {
             {chainConfig.name} (Chain {chainId})
           </p>
           <div className="flex gap-4 justify-center">
-            <Button variant="secondary" onClick={() => setShowDeposit(true)}>Deposit</Button>
+            <Button variant="secondary" onClick={() => setShowDeposit(true)}>Topup</Button>
             <Button
               variant="outline"
               className="!bg-transparent !text-white !border-white hover:!bg-white/10"
               onClick={() => setShowWithdraw(true)}
             >
-              Withdraw
+              Claim
             </Button>
           </div>
         </div>
@@ -156,7 +159,9 @@ export default function WalletPage() {
             </div>
             <div>
               <p className="text-muted">USDC Balance</p>
-              <p className="font-semibold">{usdcBalance} USDC</p>
+              <p className="font-semibold text-primary-color">
+                ${usdcBalance} <Badge>USDC</Badge>
+              </p>
             </div>
             <div>
               <p className="text-muted">Network</p>
@@ -188,11 +193,11 @@ export default function WalletPage() {
       </div>
     </div>
 
-    {/* Deposit Modal */}
-    <Modal isOpen={showDeposit} onClose={() => { setShowDeposit(false); setCopied(false); }} title={`Deposit USDC (${chainConfig.name})`}>
+    {/* Topup Modal */}
+    <Modal isOpen={showDeposit} onClose={() => { setShowDeposit(false); setCopied(false); }} title={`Topup USDC (${chainConfig.name})`}>
       <div className="space-y-4">
         <div className="bg-surface-2 rounded-xl p-4 text-center">
-          <p className="text-sm text-muted mb-2">Send USDC ({chainConfig.name}) to your wallet:</p>
+          <p className="text-sm text-muted mb-2">Send USDC ({chainConfig.name}) to your account:</p>
           <p className="font-mono text-sm break-all bg-surface-1 p-3 rounded-lg border border-border">{address || "Not connected"}</p>
         </div>
         <button
@@ -209,8 +214,8 @@ export default function WalletPage() {
       </div>
     </Modal>
 
-    {/* Withdraw Modal */}
-    <Modal isOpen={showWithdraw} onClose={() => { setShowWithdraw(false); setWithdrawMsg(null); }} title="Withdraw USDC">
+    {/* Claim Modal */}
+    <Modal isOpen={showWithdraw} onClose={() => { setShowWithdraw(false); setWithdrawMsg(null); }} title="Claim USDC">
       <form onSubmit={handleWithdraw} className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1">Recipient Address</label>
@@ -240,7 +245,7 @@ export default function WalletPage() {
             required
             className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
-          <p className="text-xs text-muted mt-1">Available: {usdcBalance} USDC</p>
+          <p className="text-xs text-muted mt-1">Available: ${usdcBalance}</p>
         </div>
         {withdrawMsg && (
           <p className={`text-sm ${withdrawMsg.type === "success" ? "text-success" : "text-error"}`}>
@@ -252,11 +257,11 @@ export default function WalletPage() {
           disabled={withdrawSending || !withdrawAddr || !withdrawAmount}
           className="w-full py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors text-sm"
         >
-          {withdrawSending ? "Processing..." : "Withdraw"}
+          {withdrawSending ? "Processing..." : "Claim"}
         </button>
         <div className="bg-warning border border-yellow-100 rounded-lg p-3">
           <p className="text-xs text-warning">
-            <strong>Note:</strong> Withdrawals are processed on {chainConfig.name}. Ensure the recipient address supports USDC on this network.
+            <strong>Note:</strong> Claims are processed on {chainConfig.name}. Ensure the recipient address supports USDC on this network.
           </p>
         </div>
       </form>

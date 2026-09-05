@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// Simple in-memory nonce store (production: use Redis or DB)
-const nonces = new Map<string, { nonce: string; expiresAt: number; address: string }>();
+import { storeNonce } from "@/lib/siwe";
 
 const NONCE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -19,17 +17,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid address" }, { status: 400 });
     }
 
+    const normalizedAddress = address.toLowerCase();
     const nonce = generateNonce();
     const expiresAt = Date.now() + NONCE_TTL_MS;
     
-    // Store nonce keyed by address
-    nonces.set(address.toLowerCase(), { nonce, expiresAt, address: address.toLowerCase() });
+    // Store nonce using shared siwe module
+    storeNonce(normalizedAddress, nonce, expiresAt);
 
-    // Clean expired nonces
-    for (const [key, val] of nonces.entries()) {
-      if (val.expiresAt < Date.now()) nonces.delete(key);
-    }
-
+    console.log(`[nonce] Generated nonce for ${normalizedAddress.slice(0, 10)}...`);
     return NextResponse.json({ nonce });
   } catch (error) {
     console.error("[nonce POST]", error);

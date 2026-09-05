@@ -100,7 +100,7 @@ export function NotificationDrawer() {
         aria-label="Notifications"
         aria-modal="true"
         className={cn(
-          "fixed right-0 top-0 z-50 flex h-full w-80 flex-col bg-surface-1 shadow-xl transition-transform duration-300 ease-in-out",
+          "fixed right-0 top-0 z-50 flex h-full w-full md:w-80 flex-col bg-surface-1 shadow-xl transition-transform duration-300 ease-in-out",
           notificationDrawerOpen ? "translate-x-0" : "translate-x-full"
         )}
       >

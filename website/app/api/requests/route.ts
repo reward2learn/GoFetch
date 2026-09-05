@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
     const sort = searchParams.get("sort") || "newest";
     const fromCountry = searchParams.get("fromCountry") || "";
     const toCountry = searchParams.get("toCountry") || "";
+    const buyerId = searchParams.get("buyerId") || "";
 
     const where: any = { status: "open" };
 
@@ -37,9 +38,17 @@ export async function GET(req: NextRequest) {
       where.toCountry = { contains: toCountry, mode: "insensitive" };
     }
 
+    // Buyer filter (see all items from owner)
+    if (buyerId) {
+      where.buyerId = buyerId;
+    }
+
     // Sort
     let orderBy: any = { createdAt: "desc" };
     switch (sort) {
+      case "deadline_asc":
+        orderBy = [{ deadline: "asc" }, { createdAt: "desc" }];
+        break;
       case "price_asc":
         orderBy = { itemPrice: "asc" };
         break;
@@ -60,7 +69,26 @@ export async function GET(req: NextRequest) {
       where,
       orderBy,
       take: 50,
-      include: {
+      select: {
+        id: true,
+        title: true,
+        category: true,
+        outletName: true,
+        imageUrl: true,
+        invoiceUrl: true,
+        itemPrice: true,
+        maxItemPrice: true,
+        reward: true,
+        fromCountry: true,
+        fromCity: true,
+        toCountry: true,
+        toCity: true,
+        deadline: true,
+        status: true,
+        archiveReason: true,
+        deliveryType: true,
+        createdAt: true,
+        buyerId: true,
         buyer: { select: { id: true, name: true } },
       },
     });
@@ -80,7 +108,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, description, category, imageUrl, productUrl, itemPrice, maxItemPrice, reward, fromCountry, fromCity, toCountry, toCity, deadline, deliveryType, pickupLocation, pickupInstructions } = body;
+    const { title, description, category, outletName, imageUrl, productUrl, invoiceUrl, itemPrice, maxItemPrice, reward, fromCountry, fromCity, toCountry, toCity, deadline, deliveryType, pickupLocation, pickupInstructions } = body;
 
     if (!title || !itemPrice || !reward || !fromCountry || !fromCity || !toCountry || !toCity) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -93,8 +121,10 @@ export async function POST(req: NextRequest) {
         title,
         description: description || null,
         category: category || "Other",
+        outletName: outletName || null,
         imageUrl: imageUrl || null,
         productUrl: productUrl || null,
+        invoiceUrl: invoiceUrl || null,
         itemPrice: parseFloat(itemPrice),
         maxItemPrice: maxItemPrice ? parseFloat(maxItemPrice) : null,
         reward: parseFloat(reward),

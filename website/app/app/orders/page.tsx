@@ -89,6 +89,9 @@ export default function OrdersPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Loved filter
+  const [lovedFilter, setLovedFilter] = useState(false);
+
   // Toast
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -103,7 +106,7 @@ export default function OrdersPage() {
         const res = await fetch("/api/orders", { signal: controller.signal });
         if (!res.ok) { if (!ignore) setOrders([]); return; }
         const data = await res.json();
-        if (!ignore) setOrders(Array.isArray(data) ? data : []);
+        if (!ignore) setOrders(Array.isArray(data.orders) ? data.orders : Array.isArray(data) ? data : []);
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
         if (!ignore) setOrders([]);
@@ -276,7 +279,7 @@ export default function OrdersPage() {
     if (tab === "requests") return o.role === "buyer";
     if (tab === "deliveries") return o.role === "traveler";
     return true;
-  });
+  }).filter((o) => !lovedFilter || favorites.has(o.id));
 
   // Computed cities for edit form
   const fromCities = editForm.fromCountry ? getCitiesForCountry(editForm.fromCountry) : [];
@@ -301,6 +304,16 @@ export default function OrdersPage() {
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
+        <button
+          onClick={() => setLovedFilter(!lovedFilter)}
+          className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+            lovedFilter
+              ? "bg-error text-white"
+              : "bg-surface-2 text-secondary hover:bg-surface-hover-strong"
+          }`}
+        >
+          ♥ Loved
+        </button>
       </div>
 
       {/* Order grid */}
@@ -331,7 +344,9 @@ export default function OrdersPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((order: any) => {
             const isOwner = order.type === "request" && order.role === "buyer";
-            const requestUrl = `/app/requests/${order.id}`;
+            const detailUrl = order.role === "traveler"
+              ? `/app/deliveries/${order.id}`
+              : `/app/requests/${order.id}`;
 
             // For request-type items (buyer's own requests), use RequestCard directly
             if (isOwner && order.type === "request") {
@@ -399,7 +414,7 @@ export default function OrdersPage() {
                       {activeMenu === order.id && (
                         <div className="absolute right-0 top-full mt-1 w-48 bg-surface-1 border border-border rounded-xl shadow-lg z-50 overflow-hidden">
                           <button
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(requestUrl); setActiveMenu(null); }}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(detailUrl); setActiveMenu(null); }}
                             className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-surface-hover transition-colors text-left"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -459,7 +474,7 @@ export default function OrdersPage() {
 
             return (
               <div key={order.id} className="relative group">
-                <Link href={requestUrl}>
+                <Link href={detailUrl}>
                   <div className="bg-surface-1 rounded-xl border border-border overflow-hidden cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col">
                     {/* Image */}
                     <div className="relative h-44 -mx-0 -mt-0 mb-0 overflow-hidden">
@@ -473,26 +488,15 @@ export default function OrdersPage() {
                       <span className="absolute top-3 left-3 text-xs font-medium px-2 py-1 bg-black/50 backdrop-blur-sm rounded-full text-white shadow-sm">
                         {category}
                       </span>
-                      {/* Delivery type badge */}
-                      {deliveryType === "click_and_collect" && (
-                        <span className="absolute top-3 left-3 mt-8 text-xs font-medium px-1.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-white shadow-sm" title="Click & Collect">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
-                          </svg>
-                        </span>
-                      )}
-                      {/* Reward badge */}
-                      <span className="absolute top-3 right-3 text-xs font-bold px-2 py-1 bg-primary text-white rounded-full shadow-sm">
-                        +{formatCurrency(reward)}
-                      </span>
+
                     </div>
 
                     {/* Content */}
-                    <div className="flex flex-col h-full p-3">
+                    <div className="flex flex-col p-3">
                       <h3 className="font-semibold text-lg mb-2 line-clamp-2">{title}</h3>
 
                       {/* Route */}
-                      <div className="space-y-1 text-sm text-white">
+                      <div className="space-y-1 text-sm">
                         <p className="flex items-center gap-1">
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
@@ -571,7 +575,7 @@ export default function OrdersPage() {
                     {activeMenu === order.id && (
                       <div className="absolute right-0 top-full mt-1 w-48 bg-surface-1 border border-border rounded-xl shadow-lg z-50 overflow-hidden">
                         <button
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(requestUrl); setActiveMenu(null); }}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(detailUrl); setActiveMenu(null); }}
                           className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-surface-hover transition-colors text-left"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -586,6 +590,27 @@ export default function OrdersPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Delivery total footer */}
+      {tab === "deliveries" && filtered.length > 0 && (
+        <div className="mt-6 p-4 bg-surface-1 border border-border rounded-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted">Total Active Delivery Rewards</p>
+              <p className="text-xs text-muted mt-0.5">
+                {filtered.filter((o: any) => ["agreed", "funded", "purchased", "in_transit", "arrived", "handoff_pending"].includes(o.status)).length} active deliveries
+              </p>
+            </div>
+            <p className="text-2xl font-bold text-success">
+              +{formatCurrency(
+                filtered
+                  .filter((o: any) => ["agreed", "funded", "purchased", "in_transit", "arrived", "handoff_pending"].includes(o.status))
+                  .reduce((sum: number, o: any) => sum + parseFloat(o.reward || "0"), 0)
+              )}
+            </p>
+          </div>
         </div>
       )}
 

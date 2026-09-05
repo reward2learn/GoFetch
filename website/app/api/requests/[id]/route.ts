@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/db";
 import { getSession } from "@/lib/auth";
+import { isAdmin } from "@/lib/admin";
 
 export async function GET(
   req: NextRequest,
@@ -53,7 +54,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { title, description, category, itemPrice, maxItemPrice, reward, fromCountry, fromCity, toCountry, toCity, deadline, deliveryType, pickupLocation, pickupInstructions } = body;
+    const { title, description, category, outletName, itemPrice, maxItemPrice, reward, fromCountry, fromCity, toCountry, toCity, deadline, deliveryType, pickupLocation, pickupInstructions } = body;
 
     const updated = await prisma.request.update({
       where: { id },
@@ -61,6 +62,7 @@ export async function PUT(
         ...(title !== undefined && { title }),
         ...(description !== undefined && { description: description || null }),
         ...(category !== undefined && { category }),
+        ...(outletName !== undefined && { outletName: outletName || null }),
         ...(itemPrice !== undefined && { itemPrice: parseFloat(itemPrice) }),
         ...(maxItemPrice !== undefined && { maxItemPrice: maxItemPrice ? parseFloat(maxItemPrice) : null }),
         ...(reward !== undefined && { reward: parseFloat(reward) }),
@@ -119,5 +121,57 @@ export async function DELETE(
   } catch (error) {
     console.error("[requests DELETE]", error);
     return NextResponse.json({ error: "Failed to delete request" }, { status: 500 });
+  }
+}
+
+const ARCHIVE_REASONS = [
+  "Duplicate listing",
+  "Item no longer available",
+  "Policy violation",
+  "Fraudulent listing",
+  "Other",
+];
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    if (!isAdmin(session.walletAddress)) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+
+    const { id } = params;
+    const body = await req.json();
+    const { status, archiveReason } = body;
+
+    const request = await prisma.request.findUnique({ where: { id } });
+    if (!request) {
+      return NextResponse.json({ error: "Request not found" }, { status: 404 });
+    }
+
+    if (status === "archived") {
+      if (!archiveReason || !ARCHIVE_REASONS.includes(archiveReason)) {
+        return NextResponse.json({ error: "A valid archive reason is required" }, { status: 400 });
+      }
+    }
+
+    const updated = await prisma.request.update({
+      where: { id },
+      data: {
+        status: status || request.status,
+        ...(archiveReason && { archiveReason }),
+      },
+    });
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("[requests PATCH]", error);
+    return NextResponse.json({ error: "Failed to update request" }, { status: 500 });
   }
 }

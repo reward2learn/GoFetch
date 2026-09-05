@@ -370,35 +370,38 @@ body {
 .shadow-md { box-shadow: var(--app-shadow-md); }
 .shadow-lg { box-shadow: var(--app-shadow-lg); }
 
-/* ── Semantic color utilities ── */
+/* ── Semantic color utilities (theme-aware) ── */
+/* Use unprefixed --app-* variables — ThemeProvider sets them to the active mode */
 .bg-success { background-color: var(--app-success-bg); color: var(--app-success-text); }
 .text-success { color: var(--app-success-text); }
 .border-success { border-color: var(--app-success-border); }
 
-.bg-error { background-color: var(--app-error-bg); }
-.text-error { color: var(--light--app-error-outline-button-color-hover); }
+.bg-error { background-color: var(--app-error-bg); color: var(--app-error-text); }
+.text-error { color: var(--app-error-text); }
 .border-error { border-color: var(--app-error-border); }
 .bg-error:hover {
   background-color: transparent !important;
 }
-  
-  
-/* Delete button hover states - using dark theme CSS variables */
-@media (prefers-color-scheme: dark) {
-  .delete-btn:hover {
-    background-color: var(--dark--app-error-outline-button-bg-hover) !important;
-    color: var(--dark--app-error-outline-button-color-hover) !important;
-  }
-}
 
-
-.bg-warning { background-color: var(--app-warning-bg); }
+.bg-warning { background-color: var(--app-warning-bg); color: var(--app-warning-text); }
 .text-warning { color: var(--app-warning-text); }
 .border-warning { border-color: var(--app-warning-border); }
 
-.bg-info { background-color: var(--app-info-bg); }
+.bg-info { background-color: var(--app-info-bg); color: var(--app-info-text); }
 .text-info { color: var(--app-info-text); }
 .border-info { border-color: var(--app-info-border); }
+
+/* Children inside status backgrounds inherit the text color */
+.bg-success > svg, .bg-success > span { color: inherit; }
+.bg-error > svg, .bg-error > span { color: inherit; }
+.bg-warning > svg, .bg-warning > span { color: inherit; }
+.bg-info > svg, .bg-info > span { color: inherit; }
+
+/* Delete button hover states */
+.delete-btn:hover {
+  background-color: var(--app-error-bg) !important;
+  color: var(--app-error-text) !important;
+}
 
 /* ── Input overrides ── */
 input, select, textarea {
@@ -430,3 +433,18 @@ input::placeholder, textarea::placeholder, select::placeholder {
 
 .text-brand { color: var(--app-brand); }
 .text-on-brand { color: #ffffff; }
+.text-primary-color { color: var(--app-primary); }
+
+/* ── AppKit theme variables ── */
+:root {
+  --apkt-colors-accent: var(--app-primary);
+  --apkt-colors-accent-secondary: var(--app-secondary);
+  --apkt-colors-success: var(--app-success-text);
+  --apkt-colors-error: var(--app-error-text);
+  --apkt-colors-warning: var(--app-warning-text);
+  --apkt-colors-info: var(--app-info-text);
+  --apkt-colors-background: var(--app-bg);
+  --apkt-colors-foreground: var(--app-text);
+  --apkt-colors-foreground-inverse: var(--app-surface-1);
+  --apkt-colors-border: var(--app-border);
+}

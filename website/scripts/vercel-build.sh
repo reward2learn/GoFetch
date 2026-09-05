@@ -9,6 +9,9 @@ if [ ! -f .env ]; then
   echo "📄 Created empty .env placeholder"
 fi
 
+# 0. Clean stale .next cache from previous deployments
+rm -rf .next
+
 # 1. Generate Prisma client
 echo "📦 Generating Prisma client..."
 npx prisma generate

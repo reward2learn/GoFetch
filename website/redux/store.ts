@@ -7,6 +7,7 @@ import requestsReducer from "./slices/requests.slice";
 import walletReducer from "./slices/wallet.slice";
 import uiReducer from "./slices/ui.slice";
 import web3Reducer from "./slices/web3.slice";
+import exploreReducer from "./slices/explore.slice";
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -15,6 +16,7 @@ const rootReducer = combineReducers({
   wallet: walletReducer,
   ui: uiReducer,
   web3: web3Reducer,
+  explore: exploreReducer,
 });
 
 const persistConfig = {

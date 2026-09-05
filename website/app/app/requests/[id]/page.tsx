@@ -36,6 +36,12 @@ export default function RequestDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Travel plan matching state
+  const [matchingPlans, setMatchingPlans] = useState<any[]>([]);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
+
   useEffect(() => {
     const controller = new AbortController();
     let ignore = false;
@@ -57,6 +63,50 @@ export default function RequestDetailPage() {
     fetchRequest();
     return () => { ignore = true; controller.abort(); };
   }, [params.id]);
+
+  // Fetch traveler's plans to check for matches
+  useEffect(() => {
+    if (!request || isOwner) return;
+
+    const fetchPlans = async () => {
+      try {
+        const res = await fetch("/api/travel-plans/mine");
+        if (!res.ok) return;
+        const plans = await res.json();
+
+        // Filter plans that match the request's destination and timing
+        const matches = plans.filter((plan: any) => {
+          if (plan.status !== "active") return false;
+
+          // Check destination match (city match, or country match if city is TBD)
+          const destMatch =
+            (plan.toCity === request.toCity) ||
+            (plan.toCountry === request.toCountry && (!request.toCity || request.toCity === "TBD"));
+
+          if (!destMatch) return false;
+
+          // Check date range if deadline is set
+          if (request.deadline) {
+            const deadline = new Date(request.deadline);
+            const depart = new Date(plan.departDate);
+            const returnDate = plan.returnDate ? new Date(plan.returnDate) : null;
+
+            // Deadline must be after departure and before/on return (or no return date set)
+            if (deadline < depart) return false;
+            if (returnDate && deadline > returnDate) return false;
+          }
+
+          return true;
+        });
+
+        setMatchingPlans(matches);
+      } catch (err) {
+        console.error("Failed to fetch travel plans:", err);
+      }
+    };
+
+    fetchPlans();
+  }, [request, isOwner]);
 
   const startEdit = () => {
     setEditForm({
@@ -109,6 +159,33 @@ export default function RequestDetailPage() {
       alert(err instanceof Error ? err.message : "Failed to delete");
       setDeleting(false);
       setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleAcceptDelivery = async (planId?: string) => {
+    setAccepting(true);
+    setAcceptError(null);
+
+    try {
+      const res = await fetch(`/api/requests/${params.id}/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ travelPlanId: planId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to accept delivery");
+      }
+
+      // Success — navigate to the order
+      router.push(`/app/deliveries/${data.id}`);
+    } catch (err) {
+      setAcceptError(err instanceof Error ? err.message : "Failed to accept delivery");
+    } finally {
+      setAccepting(false);
+      setShowPlanModal(false);
     }
   };
 
@@ -250,7 +327,7 @@ export default function RequestDetailPage() {
           <div className="flex flex-col md:flex-row gap-8 lg:gap-12">
             {/* ─── LEFT: Image ─── */}
             <div className="md:w-[45%] shrink-0">
-              <div className="relative aspect-[3/4] min-h-[400px] md:min-h-[500px] rounded-2xl overflow-hidden bg-surface-2">
+              <div className="relative aspect-[3/4] min-h-[400px] md:min-h-[400px] rounded-2xl overflow-hidden bg-surface-2">
                 <img
                   src={image}
                   alt={request.title}
@@ -417,9 +494,38 @@ export default function RequestDetailPage() {
                   </>
                   ) : request.status === "open" ? (
                   <>
-                    <button className="w-full px-6 py-3 bg-primary text-white rounded-full font-medium text-sm hover:bg-primary-hover transition-colors">
-                      Accept Delivery
+                    <button
+                      onClick={() => {
+                        if (matchingPlans.length === 0) {
+                          setAcceptError("You don't have a matching travel plan for this delivery. Create a travel plan that covers this route and deadline first.");
+                          return;
+                        }
+                        if (matchingPlans.length === 1) {
+                          handleAcceptDelivery(matchingPlans[0].id);
+                        } else {
+                          setShowPlanModal(true);
+                        }
+                      }}
+                      disabled={accepting}
+                      className="w-full px-6 py-3 bg-primary text-white rounded-full font-medium text-sm hover:bg-primary-hover transition-colors disabled:opacity-50"
+                    >
+                      {accepting ? "Accepting..." : "Accept Delivery"}
                     </button>
+
+                    {/* Matching plan indicator */}
+                    {matchingPlans.length > 0 && (
+                      <p className="text-xs text-center text-success">
+                        ✓ {matchingPlans.length} matching travel plan{matchingPlans.length !== 1 ? "s" : ""} found
+                      </p>
+                    )}
+
+                    {/* Error message */}
+                    {acceptError && (
+                      <div className="px-4 py-3 bg-error/10 border border-error/30 rounded-xl">
+                        <p className="text-sm text-error">{acceptError}</p>
+                      </div>
+                    )}
+
                     <button
                       onClick={() => router.back()}
                       className="w-full px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-full hover:bg-surface-2 transition-colors"
@@ -451,6 +557,36 @@ export default function RequestDetailPage() {
               {deleting ? "Deleting..." : "Delete"}
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Travel Plan Selection Modal */}
+      <Modal isOpen={showPlanModal} onClose={() => setShowPlanModal(false)} title="Select Travel Plan">
+        <div className="space-y-3">
+          <p className="text-sm text-secondary">
+            Choose which travel plan to associate with this delivery:
+          </p>
+          {matchingPlans.map((plan: any) => (
+            <button
+              key={plan.id}
+              onClick={() => handleAcceptDelivery(plan.id)}
+              disabled={accepting}
+              className="w-full p-3 text-left border border-border rounded-xl hover:bg-surface-hover transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-primary">
+                    {plan.fromCity}, {plan.fromCountry} → {plan.toCity}, {plan.toCountry}
+                  </p>
+                  <p className="text-sm text-muted">
+                    {new Date(plan.departDate).toLocaleDateString()}
+                    {plan.returnDate ? ` — ${new Date(plan.returnDate).toLocaleDateString()}` : " — No return date"}
+                  </p>
+                </div>
+                <span className="text-xs text-muted">Capacity: {plan.capacity}</span>
+              </div>
+            </button>
+          ))}
         </div>
       </Modal>
     </>

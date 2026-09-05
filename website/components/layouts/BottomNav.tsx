@@ -47,7 +47,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-surface-1 border-t border-border flex items-center justify-around h-16 z-50 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 bg-surface-1 border-t border-border flex items-center justify-around h-16 z-40 md:hidden">
       {tabs.map((tab) => {
         const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
         return (

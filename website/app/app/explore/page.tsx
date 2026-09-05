@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { RequestCard } from "@/components/marketplace/RequestCard";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
@@ -12,6 +13,7 @@ import { ChevronDown, Check, Upload, X, Sparkles } from "lucide-react";
 const ALL_CATEGORIES = ["Beauty", "Electronics", "Fashion", "Food", "Other"];
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest" },
+  { value: "deadline_asc", label: "Time Left: Urgent First" },
   { value: "price_asc", label: "Price: Low → High" },
   { value: "price_desc", label: "Price: High → Low" },
   { value: "reward_asc", label: "Reward: Low → High" },
@@ -26,10 +28,45 @@ export default function ExplorePage() {
   const [deliveryTypeFilter, setDeliveryTypeFilter] = useState<"all" | "standard" | "click_and_collect">("all");
   const [filterFromCountry, setFilterFromCountry] = useState("");
   const [filterToCountry, setFilterToCountry] = useState("");
+  const [lovedFilter, setLovedFilter] = useState(false);
+  const [buyerIdFilter, setBuyerIdFilter] = useState("");
+  const [groupByOwner, setGroupByOwner] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const favs = JSON.parse(localStorage.getItem("gf-favorites") || "[]");
+      return new Set(favs);
+    } catch { return new Set(); }
+  });
   const [catDropdownOpen, setCatDropdownOpen] = useState(false);
   const catDropdownRef = useRef<HTMLDivElement>(null);
   const searchQuery = useAppSelector((s) => s.ui.searchQuery);
   const dispatch = useAppDispatch();
+
+  const searchParams = useSearchParams();
+
+  // Pre-fill filters from URL params (e.g. from trip match button)
+  useEffect(() => {
+    const fc = searchParams.get("fromCountry");
+    const tc = searchParams.get("toCountry");
+    const cat = searchParams.get("category");
+    const sort = searchParams.get("sort");
+    const dt = searchParams.get("deliveryType");
+    const bid = searchParams.get("buyerId");
+
+    if (fc) setFilterFromCountry(fc);
+    if (tc) setFilterToCountry(tc);
+    if (cat) setSelectedCategories(cat.split(","));
+    if (sort) setSortBy(sort);
+    if (dt) setDeliveryTypeFilter(dt as any);
+    if (bid) setBuyerIdFilter(bid);
+  }, [searchParams]);
+
+  // Sticky filter state
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
 
   // Post modal state
   const [showPostModal, setShowPostModal] = useState(false);
@@ -51,11 +88,16 @@ export default function ExplorePage() {
   const [scrapeError, setScrapeError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [outletName, setOutletName] = useState("");
   const [category, setCategory] = useState("Other");
   const [deliveryType, setDeliveryType] = useState<"standard" | "click_and_collect">("standard");
   const [pickupLocation, setPickupLocation] = useState("");
   const [pickupInstructions, setPickupInstructions] = useState("");
+  const [invoiceUrl, setInvoiceUrl] = useState("");
+  const [invoicePreview, setInvoicePreview] = useState<string | null>(null);
+  const [deadline, setDeadline] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const invoiceInputRef = useRef<HTMLInputElement>(null);
 
   const fromCities = fromCountry ? getCitiesForCountry(fromCountry) : [];
   const toCities = toCountry ? getCitiesForCountry(toCountry) : [];
@@ -81,6 +123,44 @@ export default function ExplorePage() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  // Check admin status
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/admin/check", { signal: controller.signal })
+      .then((r) => r.json())
+      .then((data) => setIsAdmin(data.isAdmin))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+
+  // Auto-collapse filters when scrolling down
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolled = window.scrollY > 100;
+      setIsScrolled(scrolled);
+      if (scrolled) setFiltersExpanded(false);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Sync favorites from localStorage when they change
+  useEffect(() => {
+    const syncFavorites = () => {
+      try {
+        const favs = JSON.parse(localStorage.getItem("gf-favorites") || "[]");
+        setFavorites(new Set(favs));
+      } catch {}
+    };
+    window.addEventListener("storage", syncFavorites);
+    // Also poll periodically in case storage event doesn't fire (same-tab changes)
+    const interval = setInterval(syncFavorites, 1000);
+    return () => {
+      window.removeEventListener("storage", syncFavorites);
+      clearInterval(interval);
+    };
+  }, []);
+
   // Fetch requests
   useEffect(() => {
     const controller = new AbortController();
@@ -100,6 +180,7 @@ export default function ExplorePage() {
         }
         if (filterFromCountry) params.append("fromCountry", filterFromCountry);
         if (filterToCountry) params.append("toCountry", filterToCountry);
+        if (buyerIdFilter) params.append("buyerId", buyerIdFilter);
         const res = await fetch(`/api/requests?${params.toString()}`, { signal: controller.signal });
         if (!res.ok) { if (!ignore) setRequests([]); return; }
         const data = await res.json();
@@ -114,7 +195,7 @@ export default function ExplorePage() {
 
     fetchRequests();
     return () => { ignore = true; controller.abort(); };
-  }, [selectedCategories, searchQuery, sortBy, filterFromCountry, filterToCountry, deliveryTypeFilter, refreshKey]);
+  }, [selectedCategories, searchQuery, sortBy, filterFromCountry, filterToCountry, deliveryTypeFilter, buyerIdFilter, refreshKey]);
 
   const toggleCategory = (cat: string) => {
     setSelectedCategories((prev) => {
@@ -140,6 +221,22 @@ export default function ExplorePage() {
     reader.readAsDataURL(file);
   };
 
+  const handleInvoiceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setPostError("Invoice must be under 10MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setInvoicePreview(dataUrl);
+      setInvoiceUrl(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const resetForm = () => {
     setProductUrl("");
     setImageUrl("");
@@ -152,10 +249,14 @@ export default function ExplorePage() {
     setToCity("");
     setTitle("");
     setDescription("");
+    setOutletName("");
     setCategory("Other");
     setDeliveryType("standard");
     setPickupLocation("");
     setPickupInstructions("");
+    setInvoiceUrl("");
+    setInvoicePreview(null);
+    setDeadline("");
     setScrapeError(null);
   };
 
@@ -179,6 +280,9 @@ export default function ExplorePage() {
       if (data.category) setCategory(data.category);
       if (data.imageUrl) setImageUrl(data.imageUrl);
       if (data.price) setItemPrice(data.price);
+      // Pre-populate country and city from scraped location
+      if (data.country) setFromCountry(data.country);
+      if (data.city) setFromCity(data.city);
     } catch (err) {
       setScrapeError(err instanceof Error ? err.message : "Failed to scrape URL");
     } finally {
@@ -198,14 +302,17 @@ export default function ExplorePage() {
         body: JSON.stringify({
           title: form.get("title"),
           description: form.get("description"),
+          outletName: outletName || null,
           productUrl: productUrl || null,
           imageUrl: imageUrl || null,
+          invoiceUrl: invoiceUrl || null,
           category: form.get("category"),
           deliveryType,
           itemPrice: deliveryType === "click_and_collect" ? "0.00" : itemPrice,
           pickupLocation: deliveryType === "click_and_collect" ? pickupLocation : undefined,
           pickupInstructions: deliveryType === "click_and_collect" ? pickupInstructions : undefined,
           reward: reward,
+          deadline: deadline || null,
           fromCountry,
           fromCity,
           toCountry,
@@ -226,6 +333,34 @@ export default function ExplorePage() {
     }
   };
 
+  const handleArchive = async (id: string, reason: string) => {
+    try {
+      const res = await fetch(`/api/requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "archived", archiveReason: reason }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to archive");
+      }
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      console.error("Archive failed:", err);
+    }
+  };
+
+  // Group requests by owner for grouped view
+  const groupedByOwner = groupByOwner
+    ? requests.reduce((acc: Record<string, { name: string; items: any[] }>, r: any) => {
+        const ownerId = r.buyerId || r.buyer?.id || "unknown";
+        const ownerName = r.buyer?.name || "Unknown Owner";
+        if (!acc[ownerId]) acc[ownerId] = { name: ownerName, items: [] };
+        acc[ownerId].items.push(r);
+        return acc;
+      }, {} as Record<string, { name: string; items: any[] }>)
+    : null;
+
   const categoryLabel = () => {
     if (selectedCategories.length === 0 || selectedCategories.length === ALL_CATEGORIES.length) return "All Categories";
     if (selectedCategories.length === 1) return selectedCategories[0];
@@ -233,153 +368,255 @@ export default function ExplorePage() {
   };
 
   return (
-    <div className="p-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Explore Requests</h1>
-          <p className="text-sm text-muted">Find delivery opportunities worldwide</p>
+    <div className="min-h-screen">
+      {/* Sticky Filter Bar */}
+      <div className="sticky top-0 z-30 bg-surface-1 border-b border-border shadow-sm">
+        {/* Desktop header — search always visible */}
+        <div className="hidden md:block p-4">
+          <div className="flex items-center justify-between gap-4">
+            
+            <div className="flex-1 max-w-xl">
+              <input
+                type="text"
+                placeholder="Search perfume, sneakers, tech..."
+                value={searchQuery}
+                onChange={(e) => dispatch(setSearchQuery(e.target.value))}
+                className="w-full px-4 py-2.5 bg-surface-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setFiltersExpanded(!filtersExpanded)}
+                className={`p-2.5 rounded-xl border transition-colors ${
+                  filtersExpanded 
+                    ? "bg-primary text-white border-primary" 
+                    : "bg-surface-2 border-border text-muted hover:bg-surface-hover"
+                }`}
+                title={filtersExpanded ? "Hide filters" : "Show filters"}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+                </svg>
+              </button>
+              <button
+                onClick={() => { resetForm(); setShowPostModal(true); }}
+                className="px-4 py-2.5 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary-hover transition-colors"
+              >
+                Post Request
+              </button>
+            </div>
+          </div>
         </div>
-        <button
-          onClick={() => { resetForm(); setShowPostModal(true); }}
-          className="px-4 py-2 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary-hover transition-colors"
-        >
-          Post Request
-        </button>
+
+        {/* Mobile header — icon row */}
+        <div className="md:hidden p-3">
+          {!isScrolled && (
+            <h1 className="text-xl font-bold mb-3">Explore</h1>
+          )}
+          <div className="flex items-center gap-2">
+            {/* Search icon button */}
+            <button
+              onClick={() => { setSearchExpanded(!searchExpanded); if (!searchExpanded) setFiltersExpanded(false); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                searchExpanded
+                  ? "bg-primary text-white"
+                  : "bg-surface-2 text-muted hover:bg-surface-hover"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+              </svg>
+            </button>
+            {/* Filter icon button */}
+            <button
+              onClick={() => { setFiltersExpanded(!filtersExpanded); if (!filtersExpanded) setSearchExpanded(false); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                filtersExpanded
+                  ? "bg-primary text-white"
+                  : "bg-surface-2 text-muted hover:bg-surface-hover"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+              </svg>
+            </button>
+            {/* Add request icon button */}
+            <button
+              onClick={() => { resetForm(); setShowPostModal(true); }}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium bg-primary text-white hover:bg-primary-hover transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14"/><path d="M12 5v14"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile search field — expandable */}
+        <div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+          searchExpanded ? "max-h-20 opacity-100" : "max-h-0 opacity-0"
+        }`}>
+          <div className="px-3 pb-3">
+            <input
+              type="text"
+              placeholder="Search perfume, sneakers, tech..."
+              value={searchQuery}
+              onChange={(e) => dispatch(setSearchQuery(e.target.value))}
+              className="w-full px-4 py-2.5 bg-surface-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              autoFocus={searchExpanded}
+            />
+          </div>
+        </div>
+
+        {/* Expandable Filters — shared desktop/mobile */}
+        <div className={`transition-all duration-300 ease-in-out ${
+          filtersExpanded ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none h-0"
+        }`}>
+          <div className="p-4 pt-0 md:pt-4">
+            {/* Filters row */}
+            <div className="flex flex-wrap gap-3 items-center">
+              {/* Multi-select category dropdown */}
+              <div className="relative" ref={catDropdownRef}>
+                <button
+                  onClick={() => setCatDropdownOpen(!catDropdownOpen)}
+                  className="flex items-center gap-2 px-4 py-2 bg-surface-2 border border-border rounded-lg text-sm font-medium hover:bg-surface-hover transition-colors"
+                >
+                  {categoryLabel()}
+                  <ChevronDown className={`h-4 w-4 transition-transform ${catDropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+                {catDropdownOpen && (
+                  <div className="absolute z-20 mt-1 w-56 bg-surface-1 border border-border rounded-lg shadow-lg">
+                    <label className="flex items-center gap-2 px-4 py-2 hover:bg-surface-hover cursor-pointer border-b border-border">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.length === ALL_CATEGORIES.length}
+                        onChange={() => toggleCategory("All")}
+                        className="rounded border-divider text-primary-color focus:ring-primary"
+                      />
+                      <span className="text-sm font-medium">All</span>
+                    </label>
+                    {ALL_CATEGORIES.map((cat) => (
+                      <label key={cat} className="flex items-center gap-2 px-4 py-2 hover:bg-surface-hover cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedCategories.includes(cat)}
+                          onChange={() => toggleCategory(cat)}
+                          className="rounded border-divider text-primary-color focus:ring-primary"
+                        />
+                        <span className="text-sm">{cat}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sort dropdown */}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-4 py-2 bg-surface-2 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+
+              {/* Loved filter toggle */}
+              <button
+                onClick={() => setLovedFilter(!lovedFilter)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  lovedFilter
+                    ? "bg-error text-white"
+                    : "bg-surface-2 border border-border text-secondary hover:bg-surface-hover"
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill={lovedFilter ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                </svg>
+                Loved
+              </button>
+
+              {/* Delivery Type Filter */}
+              <select
+                value={deliveryTypeFilter}
+                onChange={(e) => setDeliveryTypeFilter(e.target.value as "all" | "standard" | "click_and_collect")}
+                className="px-4 py-2 bg-surface-2 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="all">All Types</option>
+                <option value="standard">Standard Delivery</option>
+                <option value="click_and_collect">Click & Collect</option>
+              </select>
+
+              {/* Country Filters */}
+              <select
+                value={filterFromCountry}
+                onChange={(e) => setFilterFromCountry(e.target.value)}
+                className="px-4 py-2 bg-surface-2 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">From Country</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+
+              <select
+                value={filterToCountry}
+                onChange={(e) => setFilterToCountry(e.target.value)}
+                className="px-4 py-2 bg-surface-2 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">To Country</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+
+              {(filterFromCountry || filterToCountry) && (
+                <button
+                  onClick={() => { setFilterFromCountry(""); setFilterToCountry(""); }}
+                  className="text-sm text-primary-color hover:underline"
+                >
+                  Clear countries
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Search */}
-      <input
-        type="text"
-        placeholder="Search perfume, sneakers, tech..."
-        value={searchQuery}
-        onChange={(e) => dispatch(setSearchQuery(e.target.value))}
-        className="w-full px-4 py-3 bg-surface-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-      />
-
-      {/* Filters row */}
-      <div className="flex flex-wrap gap-3 items-center">
-        {/* Multi-select category dropdown */}
-        <div className="relative" ref={catDropdownRef}>
-          <button
-            onClick={() => setCatDropdownOpen(!catDropdownOpen)}
-            className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-border rounded-lg text-sm font-medium hover:bg-surface-hover transition-colors"
-          >
-            {categoryLabel()}
-            <ChevronDown className={`h-4 w-4 transition-transform ${catDropdownOpen ? "rotate-180" : ""}`} />
-          </button>
-          {catDropdownOpen && (
-            <div className="absolute z-20 mt-1 w-56 bg-surface-1 border border-border rounded-lg shadow-lg">
-              <label className="flex items-center gap-2 px-4 py-2 hover:bg-surface-hover cursor-pointer border-b border-border">
-                <input
-                  type="checkbox"
-                  checked={selectedCategories.length === ALL_CATEGORIES.length}
-                  onChange={() => toggleCategory("All")}
-                  className="rounded border-divider text-primary-color focus:ring-primary"
+      {/* Main Content */}
+      <div className="p-4">
+        {/* Grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="animate-pulse bg-surface-1 rounded-xl overflow-hidden">
+                <div className="h-44 bg-surface-3" />
+                <div className="p-3 space-y-2">
+                  <div className="h-4 bg-surface-3 rounded w-2/3" />
+                  <div className="h-3 bg-surface-3 rounded w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-muted">No requests found. Try adjusting your filters.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {requests
+              .filter((r: any) => !lovedFilter || favorites.has(r.id))
+              .map((request: any) => (
+                <RequestCard
+                  key={request.id}
+                  request={request}
+                  isAdmin={isAdmin}
+                  onArchive={handleArchive}
                 />
-                <span className="text-sm font-medium">All</span>
-              </label>
-              {ALL_CATEGORIES.map((cat) => (
-                <label key={cat} className="flex items-center gap-2 px-4 py-2 hover:bg-surface-hover cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedCategories.includes(cat)}
-                    onChange={() => toggleCategory(cat)}
-                    className="rounded border-divider text-primary-color focus:ring-primary"
-                  />
-                  <span className="text-sm">{cat}</span>
-                </label>
               ))}
-            </div>
-          )}
-        </div>
-
-        {/* Sort dropdown */}
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className="px-4 py-2 bg-surface-1 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-
-        {/* Delivery Type Filter */}
-        <select
-          value={deliveryTypeFilter}
-          onChange={(e) => setDeliveryTypeFilter(e.target.value as "all" | "standard" | "click_and_collect")}
-          className="px-4 py-2 bg-surface-1 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <option value="all">All Types</option>
-          <option value="standard">Standard Delivery</option>
-          <option value="click_and_collect">Click & Collect</option>
-        </select>
-
-        {/* Country Filters */}
-        <select
-          value={filterFromCountry}
-          onChange={(e) => setFilterFromCountry(e.target.value)}
-          className="px-4 py-2 bg-surface-1 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <option value="">From Country</option>
-          {COUNTRIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-
-        <select
-          value={filterToCountry}
-          onChange={(e) => setFilterToCountry(e.target.value)}
-          className="px-4 py-2 bg-surface-1 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <option value="">To Country</option>
-          {COUNTRIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-
-        {(filterFromCountry || filterToCountry) && (
-          <button
-            onClick={() => { setFilterFromCountry(""); setFilterToCountry(""); }}
-            className="text-sm text-primary-color hover:underline"
-          >
-            Clear Countries
-          </button>
+          </div>
         )}
       </div>
-
-      {/* Results count */}
-      {!loading && (
-        <p className="text-sm text-muted">
-          {requests.length} {requests.length === 1 ? "request" : "requests"} found
-        </p>
-      )}
-
-      {/* Grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse bg-surface-1 rounded-xl overflow-hidden">
-              <div className="h-44 bg-surface-3" />
-              <div className="p-3 space-y-2">
-                <div className="h-4 bg-surface-3 rounded w-2/3" />
-                <div className="h-3 bg-surface-3 rounded w-1/2" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : requests.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-muted">No requests found. Try adjusting your filters.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {requests.map((request: any) => (
-            <RequestCard key={request.id} request={request} />
-          ))}
-        </div>
-      )}
 
       {/* Post Request Modal */}
       <Modal
@@ -463,8 +700,59 @@ export default function ExplorePage() {
             )}
           </div>
 
+          {/* Invoice Upload */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Invoice / Receipt (optional)</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => invoiceInputRef.current?.click()}
+                className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm text-secondary hover:bg-surface-hover transition-colors"
+              >
+                <Upload className="h-4 w-4" />
+                Upload Invoice
+              </button>
+              <input
+                ref={invoiceInputRef}
+                type="file"
+                accept="image/*,.pdf"
+                onChange={handleInvoiceUpload}
+                className="hidden"
+              />
+              <input
+                type="text"
+                name="invoiceUrl"
+                value={invoiceUrl}
+                onChange={(e) => { setInvoiceUrl(e.target.value); setInvoicePreview(null); }}
+                placeholder="Or paste invoice URL"
+                className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            {invoicePreview && (
+              <div className="mt-2 relative inline-block">
+                {invoicePreview.startsWith("data:application/pdf") ? (
+                  <div className="h-20 w-20 bg-surface-2 rounded-lg border border-border flex items-center justify-center text-xs text-muted">
+                    PDF
+                  </div>
+                ) : (
+                  <img src={invoicePreview} alt="Invoice Preview" className="h-20 w-20 object-cover rounded-lg border border-border" />
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setInvoicePreview(null); setInvoiceUrl(""); }}
+                  className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full flex items-center justify-center"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* 3. Title */}
           <Input label="Title" name="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Nike Air Max from London" required />
+
+          {/* 3b. Outlet Name */}
+          <Input label="Outlet Name (optional)" name="outletName" value={outletName} onChange={(e) => setOutletName(e.target.value)} placeholder="e.g., Heinemann Duty Free" />
 
           {/* 4. Description */}
           <div>
@@ -592,6 +880,20 @@ export default function ExplorePage() {
               />
             </>
           )}
+
+          {/* Delivery Deadline */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Deliver By (Deadline)</label>
+            <input
+              type="datetime-local"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              required
+            />
+            <p className="text-xs text-muted mt-1">When does the traveler need to deliver this item?</p>
+          </div>
 
           {/* 7. From Country → City */}
           <div className="grid grid-cols-2 gap-3">

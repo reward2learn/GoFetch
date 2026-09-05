@@ -47,7 +47,7 @@ export function Modal({ isOpen, onClose, title, children, footer, className }: M
           "bg-surface-1 rounded-lg shadow-xl w-full max-w-md animate-in fade-in zoom-in-95 flex flex-col",
           className
         )}
-        style={{ maxHeight: "calc(86vh - 44px)" }}
+        style={{ maxHeight: "min(calc(86vh - 44px), calc(100dvh - 120px))" }}
       >
         {/* Header — fixed ~61px */}
         {title && (
@@ -63,7 +63,7 @@ export function Modal({ isOpen, onClose, title, children, footer, className }: M
         )}
 
         {/* Body — scrollable */}
-        <div className="flex-1 overflow-auto p-4" style={{ maxHeight: "calc(86vh - 162px)" }}>
+        <div className="flex-1 overflow-auto p-4" style={{ maxHeight: "min(calc(86vh - 162px), calc(100dvh - 200px))" }}>
           {children}
         </div>
 

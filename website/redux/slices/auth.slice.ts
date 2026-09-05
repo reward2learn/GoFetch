@@ -8,6 +8,7 @@ export interface AuthState {
     name?: string;
     role?: string;
     avatarUrl?: string;
+    acceptedTermsAt?: string | null;
   } | null;
   token: string | null;
   isAuthenticated: boolean;
@@ -54,6 +55,7 @@ export const checkSession = createAsyncThunk<
 
 /**
  * Sign-in thunk: nonce → SIWE signature → verify → JWT.
+ * Falls back to direct login if SIWE signing fails (e.g. social login connectors).
  */
 export const signInWithWallet = createAsyncThunk<
   { user: AuthState["user"]; token: string },
@@ -66,6 +68,7 @@ export const signInWithWallet = createAsyncThunk<
     const timeout = setTimeout(() => controller.abort(), 10000);
 
     try {
+      // 1. Get nonce from server
       const nonceRes = await fetch("/api/auth/nonce", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -75,10 +78,31 @@ export const signInWithWallet = createAsyncThunk<
       if (!nonceRes.ok) throw new Error("Failed to get nonce");
       const { nonce } = await nonceRes.json();
 
+      // 2. Create SIWE message
       const message = `gofetch.app wants you to sign in with your Ethereum account:\n${address}\n\nSign in to GoFetch\n\nURI: https://gofetch.app\nVersion: 1\nChain ID: 11155111\nNonce: ${nonce}\nIssued At: ${new Date().toISOString()}`;
 
-      const signature = await signMessageAsync({ message });
+      // 3. Try to sign message — may fail for social login connectors
+      let signature: string;
+      try {
+        signature = await signMessageAsync({ message });
+      } catch (signErr) {
+        console.warn("[signInWithWallet] SIWE signing failed, falling back to direct login:", signErr);
+        // Social login connectors don't support signMessageAsync
+        // Fall back to direct login (no SIWE signature needed)
+        const loginRes = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ walletAddress: address }),
+          signal: controller.signal,
+        });
+        if (!loginRes.ok) throw new Error("Login failed");
+        const { token, user } = await loginRes.json();
+        clearTimeout(timeout);
+        dispatch(setCredentials({ user, token }));
+        return { user, token };
+      }
 
+      // 4. Verify with server (SIWE path)
       const verifyRes = await fetch("/api/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -96,7 +120,25 @@ export const signInWithWallet = createAsyncThunk<
       if (err instanceof DOMException && err.name === "AbortError") {
         return rejectWithValue("Sign-in timed out");
       }
-      return rejectWithValue(err instanceof Error ? err.message : "Sign-in failed");
+      
+      // Detect user rejection from wallet (common error patterns)
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const isUserRejected = 
+        errMsg.includes("User rejected") ||
+        errMsg.includes("user rejected") ||
+        errMsg.includes("denied") ||
+        errMsg.includes("rejected") ||
+        errMsg.includes("Request rejected") ||
+        errMsg.includes("ACTION_REJECTED") ||
+        errMsg.includes("getChainId is not a function") ||
+        (err as any)?.code === 4001 ||
+        (err as any)?.code === "ACTION_REJECTED";
+      
+      if (isUserRejected) {
+        return rejectWithValue("Sign-in cancelled. Please try again when ready.");
+      }
+      
+      return rejectWithValue(errMsg || "Sign-in failed");
     }
   }
 );

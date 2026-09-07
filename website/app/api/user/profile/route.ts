@@ -27,7 +27,6 @@ const BASE_SELECT = {
   role: true,
   kycStatus: true,
   createdAt: true,
-  theme: true,
   // Passport fields
   passportImageUrl: true,
   passportFullName: true,
@@ -74,13 +73,12 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, email, theme, avatarUrl } = body;
+    const { name, email, avatarUrl } = body;
 
     // Build the update payload
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (email !== undefined) updateData.email = email;
-    if (theme !== undefined) updateData.theme = theme;
     if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
 
     // Allow all passport fields to be set/cleared via this endpoint

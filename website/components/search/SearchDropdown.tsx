@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import Autocomplete from "@mui/material/Autocomplete";
 import CircularProgress from "@mui/material/CircularProgress";
 import TextField from "@mui/material/TextField";
@@ -14,15 +15,104 @@ import {
 import { fetchRequests, normalizeQuery, getRequestLabel } from "./server";
 import type { Request } from "./Request";
 
+const ITEM_HEIGHT_PX = 48;
+const MAX_LISTBOX_HEIGHT_PX = 8 * ITEM_HEIGHT_PX;
+const OVERSCAN = 5;
 const PAGE_SIZE = 20;
 
+type OptionTuple = readonly [React.HTMLAttributes<HTMLLIElement> & { key: React.Key }, Request];
+
 /**
- * Inner autocomplete that uses TanStack Query for infinite search results.
+ * Virtualized listbox component for the Autocomplete dropdown.
+ * Uses @tanstack/react-virtual for efficient rendering of 10,000+ options.
+ */
+const VirtualListbox = React.forwardRef<HTMLUListElement, React.HTMLAttributes<HTMLUListElement> & { resetScrollKey?: string }>(
+  function VirtualListbox(props, forwardedRef) {
+    const { children, style, resetScrollKey, ...listboxProps } = props;
+    const items = children as OptionTuple[];
+    const scrollContainerRef = useRef<HTMLUListElement | null>(null);
+    const setScrollContainerRef = useRef<HTMLUListElement | null>(null);
+
+    const virtualizer = useVirtualizer({
+      count: items.length,
+      getScrollElement: () => scrollContainerRef.current,
+      estimateSize: () => ITEM_HEIGHT_PX,
+      overscan: OVERSCAN,
+      useFlushSync: false,
+    });
+
+    // Keep forwarded ref and scroll ref in sync
+    useEffect(() => {
+      scrollContainerRef.current = setScrollContainerRef.current;
+    }, []);
+
+    // Scroll to top when query changes
+    useEffect(() => {
+      scrollContainerRef.current?.scrollTo({ top: 0 });
+      virtualizer.scrollToOffset(0);
+    }, [resetScrollKey, virtualizer]);
+
+    const virtualItems = virtualizer.getVirtualItems();
+
+    return (
+      <ul
+        ref={setScrollContainerRef}
+        {...listboxProps}
+        style={{
+          ...style,
+          boxSizing: "border-box",
+          maxHeight: MAX_LISTBOX_HEIGHT_PX,
+          overflow: "auto",
+          paddingBlock: 0,
+          paddingInline: 0,
+          margin: 0,
+          position: "relative",
+          listStyle: "none",
+        }}
+      >
+        <li
+          aria-hidden
+          role="presentation"
+          style={{
+            height: virtualizer.getTotalSize(),
+            pointerEvents: "none",
+          }}
+        />
+        {virtualItems.map((virtualItem) => {
+          const [optionProps, option] = items[virtualItem.index];
+          const { key: _optionKey, ...restOptionProps } = optionProps;
+          return (
+            <li
+              key={String(virtualItem.index)}
+              {...restOptionProps}
+              style={{
+                ...optionProps.style,
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: virtualItem.size,
+                transform: `translateY(${virtualItem.start}px)`,
+              }}
+            >
+              <span className="block truncate text-sm px-2 py-1">
+                {getRequestLabel(option)}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+);
+
+/**
+ * Inner autocomplete that uses TanStack Query + virtualized listbox for 10,000+ options.
  */
 function RequestsAutocomplete() {
   const router = useRouter();
-  const [open, setOpen] = React.useState(false);
-  const [queryInputValue, setQueryInputValue] = React.useState("");
+  const [open, setOpen] = useState(false);
+  const [queryInputValue, setQueryInputValue] = useState("");
 
   const normalizedQuery = React.useMemo(
     () => normalizeQuery(queryInputValue),
@@ -47,20 +137,15 @@ function RequestsAutocomplete() {
     [data]
   );
 
-  const handleInputChange = React.useCallback(
+  const handleInputChange = useCallback(
     (_event: React.SyntheticEvent, newInputValue: string) => {
       setQueryInputValue(newInputValue);
     },
     []
   );
 
-  const handleOpen = () => {
-    setOpen(true);
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-  };
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
 
   const handleSelect = (event: React.SyntheticEvent, request: Request | null) => {
     if (request) {
@@ -85,6 +170,9 @@ function RequestsAutocomplete() {
       filterOptions={(x) => x}
       onChange={handleSelect}
       onInputChange={handleInputChange}
+      renderOption={(optionProps, option) =>
+        [optionProps, option] as unknown as React.ReactNode
+      }
       renderInput={(params) => {
         const { endAdornment, ...inputSlotProps } = params.slotProps.input;
 
@@ -112,7 +200,8 @@ function RequestsAutocomplete() {
       }}
       slotProps={{
         listbox: {
-          component: "ul",
+          component: VirtualListbox,
+          resetScrollKey: normalizedQuery,
         } as any,
       }}
     />

@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
+import { useCallback } from "react";
 import Autocomplete from "@mui/material/Autocomplete";
 import CircularProgress from "@mui/material/CircularProgress";
 import TextField from "@mui/material/TextField";
@@ -18,10 +20,10 @@ const PAGE_SIZE = 20;
  * Inner autocomplete that uses TanStack Query for infinite search results.
  */
 function RequestsAutocomplete() {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
-  const [inputValue, setInputValue] = React.useState("");
   const [queryInputValue, setQueryInputValue] = React.useState("");
-  const virtualizerRef = React.useRef<HTMLUListElement | null>(null);
+  const debouncedQueryRef = React.useRef("");
 
   const normalizedQuery = React.useMemo(
     () => normalizeQuery(queryInputValue),
@@ -35,9 +37,10 @@ function RequestsAutocomplete() {
         fetchRequests(normalizedQuery, pageParam, signal),
       initialPageParam: 0,
       getNextPageParam: (lastPage) => lastPage.nextPage,
-      enabled: open,
+      enabled: open && queryInputValue.trim().length > 0,
       staleTime: 60_000,
       refetchOnWindowFocus: false,
+      retry: false,
     });
 
   const options = React.useMemo(
@@ -47,12 +50,7 @@ function RequestsAutocomplete() {
 
   const handleInputChange = React.useCallback(
     (_event: React.SyntheticEvent, newInputValue: string) => {
-      setInputValue(newInputValue);
-      if (newInputValue.trim().length > 0) {
-        setQueryInputValue(newInputValue);
-      } else {
-        setQueryInputValue("");
-      }
+      setQueryInputValue(newInputValue);
     },
     []
   );
@@ -63,6 +61,14 @@ function RequestsAutocomplete() {
 
   const handleClose = () => {
     setOpen(false);
+  };
+
+  const handleSelect = (event: React.SyntheticEvent, request: Request | null) => {
+    if (request) {
+      router.push(`/app/requests/${request.id}`);
+    }
+    setOpen(false);
+    setQueryInputValue("");
   };
 
   return (
@@ -78,6 +84,7 @@ function RequestsAutocomplete() {
       loadingText="Loading requests…"
       disableListWrap
       filterOptions={(x) => x}
+      onChange={handleSelect}
       renderInput={(params) => {
         const { endAdornment, ...inputSlotProps } = params.slotProps.input;
 

@@ -19,7 +19,7 @@ export function getRequestLabel(request: Request): string {
 /**
  * Checks whether a request matches the normalized search query.
  */
-function matchesRequest(request: Request, query: string): boolean {
+export function matchesRequest(request: Request, query: string): boolean {
   const title = normalizeQuery(request.title);
   const category = normalizeQuery(request.category);
   const label = normalizeQuery(getRequestLabel(request));
@@ -44,7 +44,6 @@ export async function fetchRequests(
 
   const allItems: Request[] = await response.json();
 
-  // Client-side pagination since API returns all matching results (up to 50)
   const start = page * PAGE_SIZE;
   const items = allItems.slice(start, start + PAGE_SIZE);
   const nextPage = start + PAGE_SIZE < allItems.length ? page + 1 : null;

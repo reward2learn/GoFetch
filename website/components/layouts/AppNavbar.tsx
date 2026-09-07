@@ -62,9 +62,8 @@ export function AppNavbar({ onSidebarToggle, sidebarCollapsed, onMobileMenuToggl
           <span className="text-base font-bold text-primary-color whitespace-nowrap truncate">{brand.name}</span>
         </div>
 
-        {/* Right: search + notification + wallet + logout */}
+        {/* Right: notification + wallet + logout */}
         <div className="flex items-center shrink-0">
-          <SearchDropdown />
           <button
             onClick={openNotifications}
             className="p-2 hover:bg-surface-tertiary rounded-lg transition-colors relative"
@@ -115,9 +114,11 @@ export function AppNavbar({ onSidebarToggle, sidebarCollapsed, onMobileMenuToggl
           </button>
         )}
 
-        {/* Center: search dropdown */}
-        <div className="flex-1 flex items-center gap-2 min-w-0">
-          <SearchDropdown />
+        {/* Center: search dropdown on brand */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-full max-w-xl">
+            <SearchDropdown />
+          </div>
         </div>
 
         {/* Right: actions */}

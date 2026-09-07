@@ -23,7 +23,6 @@ function RequestsAutocomplete() {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [queryInputValue, setQueryInputValue] = React.useState("");
-  const debouncedQueryRef = React.useRef("");
 
   const normalizedQuery = React.useMemo(
     () => normalizeQuery(queryInputValue),
@@ -85,6 +84,7 @@ function RequestsAutocomplete() {
       disableListWrap
       filterOptions={(x) => x}
       onChange={handleSelect}
+      onInputChange={handleInputChange}
       renderInput={(params) => {
         const { endAdornment, ...inputSlotProps } = params.slotProps.input;
 

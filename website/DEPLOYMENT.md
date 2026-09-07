@@ -15,7 +15,7 @@ Set these in Vercel Dashboard → Settings → Environment Variables:
 | `POSTGRES_URL` | Neon PostgreSQL connection string | ✅ |
 | `JWT_SECRET` | Secret for JWT signing | ✅ |
 | `NEXT_PUBLIC_REOWN_PROJECT_ID` | Reown AppKit project ID | ✅ |
-| `NEXT_PUBLIC_RPC_URL` | Base Sepolia RPC endpoint | ✅ |
+| `NEXT_PUBLIC_RPC_URL` | Sepolia RPC endpoint | ✅ |
 | `NEXT_PUBLIC_USDC_ADDRESS` | USDC contract address | ✅ |
 | `NEXT_PUBLIC_ESCROW_ADDRESS` | Escrow contract address | ✅ |
 
@@ -90,5 +90,5 @@ npx drizzle-kit studio
 ### Web3 Connection Issues
 
 1. Verify `NEXT_PUBLIC_REOWN_PROJECT_ID` is correct
-2. Check wallet is on Base Sepolia network
+2. Check wallet is on Sepolia network
 3. Ensure RPC URL is accessible

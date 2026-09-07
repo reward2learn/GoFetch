@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
           email: `${walletAddr.slice(0, 10)}@wallet.local`,
           token: `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`,
         },
-        select: { id: true, name: true, email: true, walletAddress: true, role: true, avatarUrl: true, acceptedTermsAt: true, createdAt: true },
+        select: { id: true, name: true, email: true, walletAddress: true, role: true, avatarUrl: true, acceptedTermsAt: true, createdAt: true, kycStatus: true, passportImageUrl: true, passportFullName: true, passportDocumentNo: true, passportNationality: true, passportDateOfBirth: true, passportSex: true, passportExpiryDate: true, passportDateOfIssue: true, passportPlaceOfBirth: true },
       });
 
       return NextResponse.json(user);
@@ -38,6 +38,16 @@ export async function GET(req: NextRequest) {
         avatarUrl: null,
         acceptedTermsAt: null,
         createdAt: null,
+        kycStatus: "none",
+        passportImageUrl: null,
+        passportFullName: null,
+        passportDocumentNo: null,
+        passportNationality: null,
+        passportDateOfBirth: null,
+        passportSex: null,
+        passportExpiryDate: null,
+        passportDateOfIssue: null,
+        passportPlaceOfBirth: null,
       });
     }
   } catch (error) {

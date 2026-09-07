@@ -5,7 +5,7 @@ async function main() {
 
   console.log("🚀 Deploying Escrow contract...");
   console.log(`   USDC: ${usdcAddress}`);
-  console.log(`   Network: baseSepolia`);
+  console.log(`   Network: sepolia`);
 
   const Escrow = await ethers.getContractFactory("Escrow");
   const escrow = await Escrow.deploy(usdcAddress);

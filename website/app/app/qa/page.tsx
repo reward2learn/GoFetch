@@ -82,12 +82,12 @@ function StepFlow({ steps }: { steps: Step[] }) {
 const MEMBER_STEPS: Step[] = [
   {
     title: "Browse & Select",
-    description: "Find the item you want delivered.",
+    description: "You find the item you want delivered and post a request.",
   },
   {
-    title: "Pay Securely",
+    title: "You Pay Securely",
     description:
-      "Pay with credit card (Stripe). Funds go into escrow.",
+      "As the member who requested the delivery, you pay with credit or debit card (Stripe). Funds are held in escrow until you confirm receipt.",
   },
   {
     title: "Traveler Accepts",
@@ -105,7 +105,7 @@ const MEMBER_STEPS: Step[] = [
   },
   {
     title: "Rate & Review",
-    description: "Rate your experience.",
+    description: "You rate your traveler and share feedback.",
   },
 ];
 

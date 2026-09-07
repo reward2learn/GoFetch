@@ -5,18 +5,26 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 export interface ExploreRequest {
   id: string;
   title: string;
+  description?: string;
+  productUrl?: string;
   category?: string;
   outletName?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   invoiceUrl?: string;
   itemPrice: number;
   maxItemPrice?: number;
+  price?: number;
+  country?: string;
+  city?: string;
   reward: number;
   fromCountry?: string;
   fromCity?: string;
   toCountry?: string;
   toCity?: string;
   deadline?: string | null;
+  pickupLocation?: string;
+  pickupInstructions?: string;
   status: string;
   archiveReason?: string;
   deliveryType?: string;
@@ -43,8 +51,9 @@ export interface ExploreState {
   isLoading: boolean;
   error: string | null;
   isAdmin: boolean;
-  /** Bumped to re-trigger fetch after mutations (archive, delete, post) */
-  refreshKey: number;
+  /** Generation counter for cache invalidation */
+  generation: number;
+  matchResults: Array<{ requestId: string; score: number; compatibility: Record<string, boolean> }>;
 }
 
 /* ─── Initial State ─── */
@@ -62,10 +71,11 @@ const initialState: ExploreState = {
     searchQuery: "",
   },
   requests: [],
-  isLoading: true,
+  isLoading: false,
   error: null,
   isAdmin: false,
-  refreshKey: 0,
+  generation: 0,
+  matchResults: [],
 };
 
 /* ─── Async Thunks ─── */
@@ -123,12 +133,68 @@ export const checkAdminStatus = createAsyncThunk(
 );
 
 /**
+ * Scrape a product URL to extract details.
+ */
+export const scrapeRequest = createAsyncThunk<
+  Partial<ExploreRequest>,
+  { url: string },
+  { rejectValue: string }
+>(
+  "explore/scrapeRequest",
+  async ({ url }, { rejectWithValue }) => {
+    try {
+      const res = await fetch("/api/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        return rejectWithValue(data.error || "Failed to scrape URL");
+      }
+      const json = await res.json();
+      return json as Partial<ExploreRequest>;
+    } catch (err) {
+      return rejectWithValue(err instanceof Error ? err.message : "Scrape failed");
+    }
+  }
+);
+
+/**
+ * Create a new request.
+ */
+export const createRequest = createAsyncThunk<
+  ExploreRequest,
+  Partial<ExploreRequest>,
+  { rejectValue: string }
+>(
+  "explore/createRequest",
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await fetch("/api/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        return rejectWithValue(err.error || "Failed to create request");
+      }
+      const json = await res.json();
+      return json as ExploreRequest;
+    } catch (err) {
+      return rejectWithValue(err instanceof Error ? err.message : "Create request failed");
+    }
+  }
+);
+
+/**
  * Archive a request (admin only).
  */
 export const archiveRequest = createAsyncThunk<
   string, // returns the archived request id
   { id: string; reason: string },
-  { rejectWithValue: string }
+  { rejectValue: string }
 >(
   "explore/archiveRequest",
   async ({ id, reason }, { dispatch, rejectWithValue }) => {
@@ -143,10 +209,30 @@ export const archiveRequest = createAsyncThunk<
         return rejectWithValue(data.error || "Failed to archive");
       }
       // Refresh the list after successful archive
-      dispatch(exploreSlice.actions.bumpRefresh());
+      dispatch(exploreSlice.actions.bumpGeneration());
       return id;
     } catch (err) {
       return rejectWithValue(err instanceof Error ? err.message : "Archive failed");
+    }
+  }
+);
+
+/**
+ * Match a request to travel plans.
+ */
+export const matchTravelPlan = createAsyncThunk<
+  Array<{ requestId: string; score: number; compatibility: Record<string, boolean> }>,
+  string,
+  { rejectValue: string }
+>(
+  "explore/matchTravelPlan",
+  async (requestId, { rejectWithValue }) => {
+    try {
+      const res = await fetch(`/api/requests/match?requestId=${requestId}`);
+      if (!res.ok) throw new Error("Failed to match travel plans");
+      return res.json();
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to match travel plans");
     }
   }
 );
@@ -157,8 +243,8 @@ const exploreSlice = createSlice({
   name: "explore",
   initialState,
   reducers: {
-    /* Filter setters — each updates one filter and auto-bumps refreshKey
-       so the consuming component can react via a useEffect on refreshKey,
+    /* Filter setters — each updates one filter and auto-bumps generation
+       so the consuming component can react via a useEffect on generation,
        or call fetchExploreRequests directly. */
     setCategories: (state, action: PayloadAction<string[]>) => {
       state.filters.categories = action.payload;
@@ -194,9 +280,9 @@ const exploreSlice = createSlice({
     resetFilters: (state) => {
       state.filters = { ...initialState.filters };
     },
-    /** Bump refreshKey to trigger a re-fetch from the component */
-    bumpRefresh: (state) => {
-      state.refreshKey += 1;
+    /** Bump generation to trigger a re-fetch from the component */
+    bumpGeneration: (state) => {
+      state.generation += 1;
     },
     /** Optimistically remove a request from the local list */
     removeRequest: (state, action: PayloadAction<string>) => {
@@ -223,9 +309,15 @@ const exploreSlice = createSlice({
       .addCase(checkAdminStatus.fulfilled, (state, action) => {
         state.isAdmin = action.payload;
       })
-      /* archiveRequest — handled via bumpRefresh in thunk, nothing extra needed */
+      /* archiveRequest — handled via bumpGeneration in thunk, nothing extra needed */
       .addCase(archiveRequest.rejected, (state, action) => {
         state.error = action.payload as string || "Archive failed";
+      })
+      .addCase(createRequest.rejected, (state, action) => {
+        state.error = action.payload as string || "Create request failed";
+      })
+      .addCase(scrapeRequest.rejected, (state, action) => {
+        state.error = action.payload as string || "Scrape failed";
       });
   },
 });
@@ -242,7 +334,7 @@ export const {
   setSearchFilter,
   clearBuyerFilter,
   resetFilters,
-  bumpRefresh,
+  bumpGeneration,
   removeRequest,
 } = exploreSlice.actions;
 

@@ -8,6 +8,13 @@ import walletReducer from "./slices/wallet.slice";
 import uiReducer from "./slices/ui.slice";
 import web3Reducer from "./slices/web3.slice";
 import exploreReducer from "./slices/explore.slice";
+import brandReducer from "./slices/brand.slice";
+import themeReducer from "./slices/theme.slice";
+import deliveriesReducer from "./slices/deliveries.slice";
+import tripsReducer from "./slices/trips.slice";
+import chatReducer from "./slices/chat.slice";
+import notificationsReducer from "./slices/notifications.slice";
+import profileReducer from "./slices/profile.slice";
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -17,6 +24,13 @@ const rootReducer = combineReducers({
   ui: uiReducer,
   web3: web3Reducer,
   explore: exploreReducer,
+  brand: brandReducer,
+  theme: themeReducer,
+  deliveries: deliveriesReducer,
+  trips: tripsReducer,
+  chat: chatReducer,
+  notifications: notificationsReducer,
+  profile: profileReducer,
 });
 
 const persistConfig = {
@@ -39,6 +53,7 @@ export const makeStore = () =>
   });
 
 export const store = makeStore();
+export const persistor = persistStore(store);
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

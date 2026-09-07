@@ -19,6 +19,27 @@ import { baseSepolia } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { REOWN_PROJECT_ID } from "./config";
 
+// In-memory storage adapter that satisfies the AppKit `Storage` interface.
+// Session-only — AppKit can re-derive its cache after wallet reconnection.
+const memoryStore = new Map<string, unknown>();
+const appKitStorage = {
+  async getKeys() {
+    return Array.from(memoryStore.keys());
+  },
+  async getEntries<T = any>() {
+    return Array.from(memoryStore.entries()) as [string, T][];
+  },
+  async getItem<T = any>(key: string) {
+    return memoryStore.get(key) as T | undefined;
+  },
+  async setItem<T = any>(key: string, value: T) {
+    memoryStore.set(key, value);
+  },
+  async removeItem(key: string) {
+    memoryStore.delete(key);
+  },
+};
+
 const networks = [baseSepolia] as const;
 
 const wagmiAdapter = new WagmiAdapter({
@@ -30,6 +51,7 @@ const appKit = createAppKit({
   projectId: REOWN_PROJECT_ID,
   networks: [...networks],
   adapters: [wagmiAdapter],
+  storage: appKitStorage,
   defaultNetwork: baseSepolia,
   metadata: {
     name: "TrustMule",
@@ -38,7 +60,7 @@ const appKit = createAppKit({
     icons: ["https://trustmule.app/icon.png"],
     redirect: { native: "frontend://" },
   },
-  features: { email: true, socials: ["google"], showWallets: true },
+  features: { socials: ["google"], showWallets: true },
 });
 
 const queryClient = new QueryClient();

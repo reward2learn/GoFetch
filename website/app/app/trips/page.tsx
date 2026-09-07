@@ -1,11 +1,24 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { COUNTRIES, getCitiesForCountry } from "@/lib/data/airports";
 import { getCountryImage } from "@/lib/data/destinations";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import {
+  fetchMyTravelPlans,
+  createTravelPlan,
+  updateTravelPlan,
+  deleteTravelPlan,
+  matchTravelPlan,
+} from "@/redux/slices/trips.slice";
+import {
+  selectTripsItems,
+  selectTripsIsLoading,
+  selectTripsMatchResults,
+} from "@/redux/selectors";
 
 interface TripData {
   id: string;
@@ -22,12 +35,13 @@ interface TripData {
 }
 
 export default function TripsPage() {
-  const [trips, setTrips] = useState<TripData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const trips = useAppSelector(selectTripsItems) as any[];
+  const isLoading = useAppSelector(selectTripsIsLoading);
+  const matchResults = useAppSelector(selectTripsMatchResults) as any[];
+  const [matchingRequests, setMatchingRequests] = useState<Record<string, any[]>>({});
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTrip, setEditingTrip] = useState<TripData | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [matchingRequests, setMatchingRequests] = useState<Record<string, any[]>>({});
   const [expandedTrip, setExpandedTrip] = useState<string | null>(null);
 
   // Form state
@@ -53,27 +67,8 @@ export default function TripsPage() {
   const toCities = formToCountry ? getCitiesForCountry(formToCountry) : [];
 
   useEffect(() => {
-    const controller = new AbortController();
-    let ignore = false;
-
-    const fetchTrips = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/travel-plans/mine", { signal: controller.signal });
-        if (!res.ok) { if (!ignore) setTrips([]); return; }
-        const data = await res.json();
-        if (!ignore) setTrips(Array.isArray(data) ? data : data.travelPlans || []);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        if (!ignore) setTrips([]);
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    };
-
-    fetchTrips();
-    return () => { ignore = true; controller.abort(); };
-  }, [refreshKey]);
+    dispatch(fetchMyTravelPlans());
+  }, [dispatch]);
 
   // Fetch matching requests for each trip
   useEffect(() => {
@@ -83,14 +78,10 @@ export default function TripsPage() {
       const matches: Record<string, any[]> = {};
       for (const trip of trips) {
         try {
-          const params = new URLSearchParams();
-          params.append("fromCountry", trip.fromCountry);
-          params.append("toCountry", trip.toCountry);
-          const res = await fetch(`/api/requests/match?${params.toString()}`);
-          if (res.ok) {
-            const data = await res.json();
-            matches[trip.id] = data;
-          }
+          const result = await dispatch(
+            matchTravelPlan(trip.id)
+          ).unwrap();
+          matches[trip.id] = result;
         } catch (err) {
           console.error("Failed to fetch matches:", err);
         }
@@ -99,7 +90,7 @@ export default function TripsPage() {
     };
 
     fetchMatches();
-  }, [trips]);
+  }, [trips, dispatch]);
 
   const resetForm = () => {
     setFormFromCountry("");
@@ -181,26 +172,21 @@ export default function TripsPage() {
         note: noteJson,
       };
 
-      let res;
       if (editingTrip) {
-        res = await fetch(`/api/travel-plans/${editingTrip.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        const result = await dispatch(
+          updateTravelPlan({ id: editingTrip.id, data: payload })
+        ).unwrap();
       } else {
-        res = await fetch("/api/travel-plans", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        const result = await dispatch(
+          createTravelPlan(payload)
+        ).unwrap();
       }
 
-      if (res.ok) {
+      if (true) {
         setShowCreateModal(false);
         setEditingTrip(null);
         resetForm();
-        setRefreshKey((k) => k + 1);
+        dispatch(fetchMyTravelPlans());
       }
     } catch (err) {
       console.error("Failed to save trip:", err);
@@ -212,8 +198,8 @@ export default function TripsPage() {
   const handleDelete = async (tripId: string) => {
     if (!confirm("Delete this trip?")) return;
     try {
-      await fetch(`/api/travel-plans/${tripId}`, { method: "DELETE" });
-      setRefreshKey((k) => k + 1);
+      await dispatch(deleteTravelPlan(tripId)).unwrap();
+      dispatch(fetchMyTravelPlans());
     } catch (err) {
       console.error("Failed to delete trip:", err);
     }
@@ -228,11 +214,11 @@ export default function TripsPage() {
   };
 
   return (
-    <div className="p-4 space-y-4 pb-24">
-      <h1 className="text-2xl font-bold">My Trips</h1>
+    <div className="p-0 space-y-0 pb-24">
+      {/* <h1 className="text-2xl font-bold">My Trips</h1> */}
 
-      {loading ? (
-        <div className="space-y-3">
+      {isLoading ? (
+        <div className="space-y-3 p-4 space-y-4">
           {[1, 2].map((i) => (
             <div key={i} className="animate-pulse p-4 bg-surface-1 rounded-xl border border-border">
               <div className="h-4 bg-surface-2 rounded w-2/3 mb-2" />
@@ -248,7 +234,7 @@ export default function TripsPage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid p-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {trips.map((trip: any) => {
             const noteData = parseNote(trip.note);
             const matches = matchingRequests[trip.id] || [];
@@ -434,7 +420,7 @@ export default function TripsPage() {
           </>
         }
       >
-        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        <div className=" ">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">From Country</label>

@@ -8,6 +8,10 @@ const verifySchema = z.object({
   walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid wallet address").optional(),
   message: z.string().min(1),
   signature: z.string().min(1),
+  name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  avatarUrl: z.string().url().optional(),
+  authProvider: z.string().optional(),
 }).refine((data) => data.address || data.walletAddress, {
   message: "Either address or walletAddress is required",
 });
@@ -26,6 +30,7 @@ export async function POST(req: NextRequest) {
 
     const walletAddress = parsed.data.address || parsed.data.walletAddress || "";
     const normalizedAddress = walletAddress.toLowerCase();
+    const { name: socialName, email: socialEmail, avatarUrl: socialAvatarUrl, authProvider } = parsed.data;
 
     // Basic SIWE message validation (format check only - signature provides authenticity)
     const message = parsed.data.message;
@@ -47,11 +52,28 @@ export async function POST(req: NextRequest) {
         user = await prisma.user.create({
           data: {
             walletAddress: normalizedAddress,
-            name: `${normalizedAddress.slice(0, 6)}...${normalizedAddress.slice(-4)}`,
-            email: `${normalizedAddress.slice(0, 10)}@wallet.local`,
+            name: socialName || `${normalizedAddress.slice(0, 6)}...${normalizedAddress.slice(-4)}`,
+            email: socialEmail || `${normalizedAddress.slice(0, 10)}@wallet.local`,
+            avatarUrl: socialAvatarUrl || null,
             token: `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`,
           },
         });
+      } else if ((socialName || socialEmail || socialAvatarUrl) && authProvider) {
+        // Social login: update existing user with real profile if they still have placeholders
+        const needsUpdate =
+          (socialEmail && user.email?.endsWith("@wallet.local")) ||
+          (socialName && (user.name?.startsWith("0x") || user.name?.startsWith("User 0x"))) ||
+          (socialAvatarUrl && !user.avatarUrl);
+        if (needsUpdate) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              ...(socialName && (user.name?.startsWith("0x") || user.name?.startsWith("User 0x")) && { name: socialName }),
+              ...(socialEmail && user.email?.endsWith("@wallet.local") && { email: socialEmail }),
+              ...(socialAvatarUrl && !user.avatarUrl && { avatarUrl: socialAvatarUrl }),
+            },
+          });
+        }
       }
 
       // Generate JWT
@@ -69,6 +91,7 @@ export async function POST(req: NextRequest) {
           email: user.email,
           walletAddress: user.walletAddress,
           role: user.role,
+          avatarUrl: user.avatarUrl,
         },
       });
 

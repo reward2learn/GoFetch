@@ -38,7 +38,8 @@ export const fetchOrders = createAsyncThunk(
         throw new Error("Failed to fetch orders");
       }
 
-      return response.json();
+      const data = await response.json();
+      return data.orders || [];
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to fetch orders"
@@ -50,11 +51,7 @@ export const fetchOrders = createAsyncThunk(
 export const createOrder = createAsyncThunk(
   "orders/createOrder",
   async (
-    payload: {
-      pickupAddress: string;
-      deliveryAddress: string;
-      packageDescription?: string;
-    },
+    payload: Record<string, any>,
     { rejectWithValue }
   ) => {
     try {
@@ -77,6 +74,40 @@ export const createOrder = createAsyncThunk(
     }
   }
 );
+
+export const updateRequest = createAsyncThunk<
+  Order,
+  { id: string; data: Record<string, any> },
+  { rejectValue: string }
+>("orders/updateRequest", async ({ id, data }, { rejectWithValue }) => {
+  try {
+    const response = await fetch(`/api/requests/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error("Failed to update request");
+    return response.json();
+  } catch (error) {
+    return rejectWithValue(error instanceof Error ? error.message : "Failed to update request");
+  }
+});
+
+export const deleteRequest = createAsyncThunk<
+  { id: string },
+  string,
+  { rejectValue: string }
+>("orders/deleteRequest", async (id, { rejectWithValue }) => {
+  try {
+    const response = await fetch(`/api/requests/${id}`, { method: "DELETE" });
+    if (!response.ok) throw new Error("Failed to delete request");
+    return { id };
+  } catch (error) {
+    return rejectWithValue(error instanceof Error ? error.message : "Failed to delete request");
+  }
+});
+
+/* ─── Slice ─── */
 
 const ordersSlice = createSlice({
   name: "orders",
@@ -114,7 +145,23 @@ const ordersSlice = createSlice({
       .addCase(createOrder.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
-      });
+      })
+      .addCase(updateRequest.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateRequest.fulfilled, (state, action: PayloadAction<Order>) => {
+        state.isLoading = false;
+        const index = state.items.findIndex((o) => o.id === action.payload.id);
+        if (index !== -1) state.items[index] = action.payload;
+      })
+      .addCase(updateRequest.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(deleteRequest.fulfilled, (state, action: PayloadAction<{ id: string }>) => {
+        state.items = state.items.filter((o) => o.id !== action.payload.id);
+      })
   },
 });
 

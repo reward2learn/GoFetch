@@ -8,7 +8,18 @@ export interface AuthState {
     name?: string;
     role?: string;
     avatarUrl?: string;
+    passportImageUrl?: string;
     acceptedTermsAt?: string | null;
+    kycStatus?: string;
+    kycSubmittedAt?: string | null;
+    passportFullName?: string;
+    passportDocumentNo?: string;
+    passportNationality?: string;
+    passportDateOfBirth?: string;
+    passportSex?: string;
+    passportExpiryDate?: string;
+    passportDateOfIssue?: string;
+    passportPlaceOfBirth?: string;
   } | null;
   token: string | null;
   isAuthenticated: boolean;
@@ -59,11 +70,20 @@ export const checkSession = createAsyncThunk<
  */
 export const signInWithWallet = createAsyncThunk<
   { user: AuthState["user"]; token: string },
-  { address: string; signMessageAsync: (msg: { message: string }) => Promise<string> },
+  {
+    address: string;
+    signMessageAsync: (msg: { message: string }) => Promise<string>;
+    socialProfile?: {
+      name?: string;
+      email?: string;
+      avatarUrl?: string;
+      authProvider?: string;
+    };
+  },
   { rejectValue: string }
 >(
   "auth/signInWithWallet",
-  async ({ address, signMessageAsync }, { dispatch, rejectWithValue }) => {
+  async ({ address, signMessageAsync, socialProfile }, { dispatch, rejectWithValue }) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
@@ -79,7 +99,7 @@ export const signInWithWallet = createAsyncThunk<
       const { nonce } = await nonceRes.json();
 
       // 2. Create SIWE message
-      const message = `gofetch.app wants you to sign in with your Ethereum account:\n${address}\n\nSign in to GoFetch\n\nURI: https://gofetch.app\nVersion: 1\nChain ID: 11155111\nNonce: ${nonce}\nIssued At: ${new Date().toISOString()}`;
+      const message = `gofetch.app wants you to sign in with your Ethereum account:\n${address}\n\nSign in to GoFetch\n\nURI: https://gofetch.app\nVersion: 1\nChain ID: ${process.env.NEXT_PUBLIC_CHAIN_ID}\nNonce: ${nonce}\nIssued At: ${new Date().toISOString()}`;
 
       // 3. Try to sign message — may fail for social login connectors
       let signature: string;
@@ -92,7 +112,13 @@ export const signInWithWallet = createAsyncThunk<
         const loginRes = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ walletAddress: address }),
+          body: JSON.stringify({
+            walletAddress: address,
+            name: socialProfile?.name,
+            email: socialProfile?.email,
+            avatarUrl: socialProfile?.avatarUrl,
+            authProvider: socialProfile?.authProvider,
+          }),
           signal: controller.signal,
         });
         if (!loginRes.ok) throw new Error("Login failed");
@@ -106,7 +132,15 @@ export const signInWithWallet = createAsyncThunk<
       const verifyRes = await fetch("/api/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, message, signature }),
+        body: JSON.stringify({
+          address,
+          message,
+          signature,
+          name: socialProfile?.name,
+          email: socialProfile?.email,
+          avatarUrl: socialProfile?.avatarUrl,
+          authProvider: socialProfile?.authProvider,
+        }),
         signal: controller.signal,
       });
       if (!verifyRes.ok) throw new Error("Verification failed");

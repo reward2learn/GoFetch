@@ -11,7 +11,7 @@ const DEFAULT_BRAND = {
   loadingGraphic: null,
   loginTagline: "P2P Global Shopping & Delivery",
   loginSubtitle: "Connect your wallet to start buying or delivering items worldwide.",
-  poweredBy: "Powered by USDC on Base Sepolia",
+  poweredBy: "Powered by USDC on Sepolia",
 };
 
 export async function GET() {
@@ -71,7 +71,7 @@ export async function PUT(request: NextRequest) {
       loadingGraphic: body.loadingGraphic || null,
       loginTagline: body.loginTagline || "P2P Global Shopping & Delivery",
       loginSubtitle: body.loginSubtitle || "Connect your wallet to start buying or delivering items worldwide.",
-      poweredBy: body.poweredBy || "Powered by USDC on Base Sepolia",
+      poweredBy: body.poweredBy || "Powered by USDC on Sepolia",
     };
 
     await prisma.appSetting.upsert({

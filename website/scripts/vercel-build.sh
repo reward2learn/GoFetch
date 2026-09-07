@@ -14,10 +14,10 @@ rm -rf .next
 
 # 1. Generate Prisma client
 echo "📦 Generating Prisma client..."
-npx prisma generate
+bunx prisma generate
 
 # 2. Build Next.js app
 echo "🔨 Building Next.js app..."
-npm run build
+bun run build
 
 echo "✅ Build complete!"

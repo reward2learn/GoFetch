@@ -4,6 +4,16 @@ import { useEffect, useRef } from "react";
 import { XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+type ModalSize = "sm" | "md" | "lg" | "xl" | "full";
+
+const MODAL_SIZE_CLASSES: Record<ModalSize, string> = {
+  sm: "max-w-sm",  // 24rem / 384px
+  md: "max-w-md",  // 28rem / 448px (default)
+  lg: "max-w-2xl", // 42rem / 672px
+  xl: "max-w-4xl", // 56rem / 896px
+  full: "max-w-6xl", // 72rem / 1152px
+};
+
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -11,9 +21,11 @@ interface ModalProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   className?: string;
+  /** Width preset. Defaults to "md" (max-w-md). */
+  size?: ModalSize;
 }
 
-export function Modal({ isOpen, onClose, title, children, footer, className }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, footer, className, size = "md" }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,7 +56,8 @@ export function Modal({ isOpen, onClose, title, children, footer, className }: M
     >
       <div
         className={cn(
-          "bg-surface-1 rounded-lg shadow-xl w-full max-w-md animate-in fade-in zoom-in-95 flex flex-col",
+          "bg-surface-1 rounded-lg shadow-xl w-full animate-in fade-in zoom-in-95 flex flex-col",
+          MODAL_SIZE_CLASSES[size],
           className
         )}
         style={{ maxHeight: "min(calc(86vh - 44px), calc(100dvh - 120px))" }}

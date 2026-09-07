@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "compile": "npx hardhat compile",
-    "deploy:escrow": "npx hardhat run scripts/deploy-escrow.ts --network baseSepolia",
+    "deploy:escrow": "npx hardhat run scripts/deploy-escrow.ts --network sepolia",
     "db:generate": "npx prisma generate",
     "db:push": "npx prisma db push",
     "db:migrate": "npx prisma migrate dev",

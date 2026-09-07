@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { formatCurrency } from "@/lib/utils";
+import { ImageCarousel } from "@/components/ui/ImageCarousel";
 import moment from "moment";
 
 const CATEGORY_IMAGES: Record<string, string> = {
@@ -11,7 +12,7 @@ const CATEGORY_IMAGES: Record<string, string> = {
   Electronics: "https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=600&h=400&fit=crop",
   Fashion: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=600&h=400&fit=crop",
   Food: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=400&fit=crop",
-  Travel: "https://images.unsplash.com/photo-1436491865332-7a61a109db05?w=600&h=400&fit=crop",
+  Travel: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600&h=400&fit=crop",
   Other: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=600&h=400&fit=crop",
 };
 
@@ -23,7 +24,7 @@ interface RequestCardProps {
     title: string;
     category?: string;
     outletName?: string;
-    imageUrl?: string;
+    imageUrls?: string[];
     itemPrice: number;
     reward: number;
     fromCity?: string;
@@ -37,6 +38,7 @@ interface RequestCardProps {
     buyerId?: string;
     buyer?: { id: string; name?: string };
   };
+  href?: string;
   isAdmin?: boolean;
   onEdit?: (request: RequestCardProps["request"]) => void;
   onDelete?: (id: string) => void;
@@ -70,9 +72,13 @@ function getStatusColor(status: string): { color: string; label: string } {
   }
 }
 
-export function RequestCard({ request, isAdmin: isAdminUser, onEdit, onDelete, onArchive }: RequestCardProps) {
+export function RequestCard({ request, href, isAdmin: isAdminUser, onEdit, onDelete, onArchive }: RequestCardProps) {
   const router = useRouter();
-  const image = request.imageUrl || CATEGORY_IMAGES[request.category || "Other"] || DEFAULT_IMAGE;
+  // Build the image list — prefer the request's uploaded images, fall back to
+  // a category-appropriate default.
+  const allImages: string[] = request.imageUrls && request.imageUrls.length > 0
+    ? request.imageUrls
+    : [CATEGORY_IMAGES[request.category || "Other"] || DEFAULT_IMAGE];
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
@@ -126,16 +132,20 @@ export function RequestCard({ request, isAdmin: isAdminUser, onEdit, onDelete, o
       url: url,
     };
     
-    if (navigator.share) {
+    if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share(shareData);
       } catch {
         // User cancelled or share failed — fallback to clipboard
-        navigator.clipboard.writeText(url);
+        if (typeof navigator !== "undefined" && navigator.clipboard) {
+          navigator.clipboard.writeText(url);
+        }
       }
     } else {
       // Web Share API not supported — fallback to clipboard
-      navigator.clipboard.writeText(url);
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+          navigator.clipboard.writeText(url);
+        }
     }
   };
 
@@ -143,18 +153,20 @@ export function RequestCard({ request, isAdmin: isAdminUser, onEdit, onDelete, o
 
   return (
     <div className="relative group">
-      <Link href={`/app/requests/${request.id}`}>
+      <Link href={href || `/app/requests/${request.id}`}>
         <div className="bg-surface-1 rounded-xl border border-border overflow-hidden cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col">
-          {/* Image — fixed 320px */}
+          {/* Image carousel */}
           <div className="relative overflow-hidden" style={{ height: "320px", minHeight: "320px", maxHeight: "320px" }}>
-            <img
-              src={image}
+            <ImageCarousel
+              images={allImages}
               alt={request.title}
-              className="w-full h-full object-cover"
-              loading="lazy"
+              imgClassName="object-cover w-full h-full"
+              showIndicators
+              showArrows
+              rounded="rounded-none"
             />
             {/* Category badge */}
-            <span className="absolute top-3 left-3 text-xs font-medium px-2 py-1 bg-black/50 backdrop-blur-sm rounded-full text-white shadow-sm">
+            <span className="absolute top-3 left-3 text-xs font-medium px-2 py-1 bg-black/50 backdrop-blur-sm rounded-full text-white shadow-sm z-10">
               {request.category || "Other"}
             </span>
           </div>
@@ -297,7 +309,7 @@ export function RequestCard({ request, isAdmin: isAdminUser, onEdit, onDelete, o
           {menuOpen && (
             <div className="absolute right-0 top-full mt-1 w-56 bg-surface-1 border border-border rounded-xl shadow-lg z-50 overflow-hidden">
               <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); router.push(`/app/requests/${request.id}`); }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); router.push(href || `/app/requests/${request.id}`); }}
                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-surface-hover transition-colors text-left"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -309,7 +321,11 @@ export function RequestCard({ request, isAdmin: isAdminUser, onEdit, onDelete, o
               {/* See all items from this owner */}
               {request.buyerId && (
                 <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); router.push(`/app/explore?buyerId=${request.buyerId}`); }}
+                  onClick={(e) => {
+                    e.preventDefault(); e.stopPropagation(); setMenuOpen(false);
+                    const name = request.buyer?.name || "";
+                    router.push(`/app/explore?buyerId=${request.buyerId}${name ? `&buyerName=${encodeURIComponent(name)}` : ""}`);
+                  }}
                   className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-surface-hover transition-colors text-left"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -261,8 +261,8 @@ async def root():
 @api_router.get("/chain/config")
 async def chain_config():
     return {
-        "chainId": int(os.environ.get("CHAIN_ID", "84532")),
-        "chainName": os.environ.get("CHAIN_NAME", "Base Sepolia"),
+        "chainId": int(os.environ.get("CHAIN_ID", "11155111")),
+        "chainName": os.environ.get("CHAIN_NAME", "Sepolia"),
         "usdcAddress": os.environ.get("USDC_ADDRESS", ""),
         "escrowAddress": os.environ.get("ESCROW_ADDRESS", ""),
         "rpcUrl": os.environ.get("RPC_URL", ""),

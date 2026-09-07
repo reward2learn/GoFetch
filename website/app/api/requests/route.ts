@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
         title: true,
         category: true,
         outletName: true,
-        imageUrl: true,
+        imageUrls: true,
         invoiceUrl: true,
         itemPrice: true,
         maxItemPrice: true,
@@ -108,7 +108,13 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, description, category, outletName, imageUrl, productUrl, invoiceUrl, itemPrice, maxItemPrice, reward, fromCountry, fromCity, toCountry, toCity, deadline, deliveryType, pickupLocation, pickupInstructions } = body;
+    const { title, description, category, outletName, imageUrl, imageUrls, productUrl, invoiceUrl, itemPrice, maxItemPrice, reward, fromCountry, fromCity, toCountry, toCity, deadline, deliveryType, pickupLocation, pickupInstructions } = body;
+
+// Normalize images: accept both `imageUrls` (array) and `imageUrl` (single, legacy).
+// Always store as an array.
+const normalizedImages: string[] = Array.isArray(imageUrls) && imageUrls.length > 0
+  ? imageUrls.filter((u: any) => typeof u === "string" && u.trim().length > 0).map((u: string) => u.trim())
+  : (imageUrl ? [imageUrl] : []);
 
     if (!title || !itemPrice || !reward || !fromCountry || !fromCity || !toCountry || !toCity) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -122,7 +128,7 @@ export async function POST(req: NextRequest) {
         description: description || null,
         category: category || "Other",
         outletName: outletName || null,
-        imageUrl: imageUrl || null,
+        imageUrls: normalizedImages,
         productUrl: productUrl || null,
         invoiceUrl: invoiceUrl || null,
         itemPrice: parseFloat(itemPrice),

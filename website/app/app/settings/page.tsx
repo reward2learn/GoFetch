@@ -10,13 +10,25 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setCredentials } from "@/redux/slices/auth.slice";
 import ThemeEditor from "@/components/admin/ThemeEditor";
 import { useLogout } from "@/lib/useLogout";
+import { fetchBrandSettings, saveBrandSettings, provisionNeon, type BrandSettings } from "@/redux/slices/brand.slice";
+import { fetchThemeSettings, saveThemeSettings } from "@/redux/slices/theme.slice";
+import {
+  selectBrandSettings,
+  selectBrandIsLoading,
+  selectBrandError,
+  selectThemeSettings,
+  selectThemeIsLoading,
+  selectThemeError,
+} from "@/redux/selectors";
 
 /* ─── Database Configuration Card ─── */
 function DatabaseConfigCard() {
+  const dispatch = useAppDispatch();
+  const isLoading = useAppSelector(selectBrandIsLoading);
+  const error = useAppSelector(selectBrandError);
   const [projectId, setProjectId] = useState("");
   const [branchName, setBranchName] = useState("");
   const [databaseName, setDatabaseName] = useState("neondb");
-  const [provisioning, setProvisioning] = useState(false);
   const [result, setResult] = useState<{
     type: "success" | "error";
     text: string;
@@ -27,23 +39,16 @@ function DatabaseConfigCard() {
 
   const handleProvision = async () => {
     if (!projectId.trim()) return;
-    setProvisioning(true);
     setResult(null);
     try {
-      const res = await fetch("/api/admin/neon/provision", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId: projectId.trim(),
-          branchName: branchName.trim() || undefined,
-          databaseName: databaseName.trim() || "neondb",
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Provisioning failed");
+      const data = await dispatch(provisionNeon()).unwrap() as {
+        success: boolean;
+        branch?: { id: string; name: string };
+        connection?: { direct: string; pooled: string; database: string };
+      };
       setResult({
         type: "success",
-        text: `Branch "${data.branch.name}" created successfully!`,
+        text: `Branch "${data.branch?.name || "created"}" created successfully!`,
         connection: data.connection,
         branch: data.branch,
       });
@@ -52,14 +57,14 @@ function DatabaseConfigCard() {
         type: "error",
         text: err instanceof Error ? err.message : "Provisioning failed",
       });
-    } finally {
-      setProvisioning(false);
     }
   };
 
   const copyToClipboard = async (text: string, type: "direct" | "pooled") => {
     try {
-      await navigator.clipboard.writeText(text);
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      }
       setCopied(type);
       setTimeout(() => setCopied(null), 2000);
     } catch {}
@@ -124,10 +129,10 @@ function DatabaseConfigCard() {
         <Button
           variant="primary"
           onClick={handleProvision}
-          disabled={!projectId.trim() || provisioning}
+          disabled={!projectId.trim() || isLoading}
           className="w-full"
         >
-          {provisioning ? (
+          {isLoading ? (
             <span className="flex items-center gap-2">
               <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
@@ -229,8 +234,7 @@ export default function SettingsPage() {
   const [brandLoadingGraphic, setBrandLoadingGraphic] = useState<string | null>(null);
   const [brandLoginTagline, setBrandLoginTagline] = useState("P2P Global Shopping & Delivery");
   const [brandLoginSubtitle, setBrandLoginSubtitle] = useState("Connect your wallet to start buying or delivering items worldwide.");
-  const [brandPoweredBy, setBrandPoweredBy] = useState("Powered by USDC on Base Sepolia");
-  const [brandSaving, setBrandSaving] = useState(false);
+  const [brandPoweredBy, setBrandPoweredBy] = useState("Powered by USDC on Sepolia");
   const brandLogoRef = useRef<HTMLInputElement>(null);
   const brandFaviconRef = useRef<HTMLInputElement>(null);
   const brandLoadingRef = useRef<HTMLInputElement>(null);
@@ -245,35 +249,31 @@ export default function SettingsPage() {
 
   // Check admin status + load profile
   useEffect(() => {
-    const controller = new AbortController();
-    let ignore = false;
-
     const loadData = async () => {
       try {
         // Check admin
-        const adminRes = await fetch("/api/admin/check", { signal: controller.signal });
-        if (!ignore && adminRes.ok) {
+        const adminRes = await fetch("/api/admin/check");
+        if (adminRes.ok) {
           const adminData = await adminRes.json();
           setIsAdmin(adminData.isAdmin);
         }
 
         // Load profile
-        const res = await fetch("/api/auth/me", { signal: controller.signal });
-        if (!ignore && res.ok) {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
           const data = await res.json();
           setName(data.name || "");
           setEmail(data.email || "");
           setAvatarUrl(data.avatarUrl || null);
           if (data.theme) setMode(data.theme);
-        } else if (!ignore && authUser) {
+        } else if (authUser) {
           setName(authUser.name || "");
           setEmail(authUser.email || "");
         }
 
         // Load brand settings
-        const brandRes = await fetch("/api/admin/brand", { signal: controller.signal });
-        if (!ignore && brandRes.ok) {
-          const brandData = await brandRes.json();
+        try {
+          const brandData = await dispatch(fetchBrandSettings()).unwrap() as Record<string, any>;
           setBrandName(brandData.name || "GoFetch");
           setBrandSubtitle(brandData.subtitle || "Global Delivery");
           setBrandLogo(brandData.logo || null);
@@ -281,10 +281,15 @@ export default function SettingsPage() {
           setBrandLoadingGraphic(brandData.loadingGraphic || null);
           setBrandLoginTagline(brandData.loginTagline || "P2P Global Shopping & Delivery");
           setBrandLoginSubtitle(brandData.loginSubtitle || "Connect your wallet to start buying or delivering items worldwide.");
-          setBrandPoweredBy(brandData.poweredBy || "Powered by USDC on Base Sepolia");
-        }
+          setBrandPoweredBy(brandData.poweredBy || "Powered by USDC on Sepolia");
+        } catch {}
+
+        // Load theme settings
+        try {
+          await dispatch(fetchThemeSettings()).unwrap();
+        } catch {}
       } catch {
-        if (!ignore && authUser) {
+        if (authUser) {
           setName(authUser.name || "");
           setEmail(authUser.email || "");
         }
@@ -293,10 +298,6 @@ export default function SettingsPage() {
 
     loadData();
     readBrandColors();
-    return () => {
-      ignore = true;
-      controller.abort();
-    };
   }, []);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -390,28 +391,23 @@ export default function SettingsPage() {
     reader.readAsDataURL(file);
   };
 
+  const brandIsLoading = useAppSelector(selectBrandIsLoading);
+  const brandError = useAppSelector(selectBrandError);
+
   const handleSaveBrand = async () => {
-    setBrandSaving(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/admin/brand", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: brandName,
-          subtitle: brandSubtitle,
-          logo: brandLogo,
-          favicon: brandFavicon,
-          loadingGraphic: brandLoadingGraphic,
-          loginTagline: brandLoginTagline,
-          loginSubtitle: brandLoginSubtitle,
-          poweredBy: brandPoweredBy,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to save brand settings");
-      }
+      const data = {
+        name: brandName,
+        subtitle: brandSubtitle,
+        logo: brandLogo,
+        favicon: brandFavicon,
+        loadingGraphic: brandLoadingGraphic,
+        loginTagline: brandLoginTagline,
+        loginSubtitle: brandLoginSubtitle,
+        poweredBy: brandPoweredBy,
+      };
+      await dispatch(saveBrandSettings(data as Partial<BrandSettings>)).unwrap();
       setMessage({ type: "success", text: "Brand settings saved successfully" });
       setTimeout(() => window.location.reload(), 1000);
     } catch (err) {
@@ -419,8 +415,6 @@ export default function SettingsPage() {
         type: "error",
         text: err instanceof Error ? err.message : "Failed to save brand settings",
       });
-    } finally {
-      setBrandSaving(false);
     }
   };
 
@@ -551,12 +545,12 @@ export default function SettingsPage() {
             {/* Powered By */}
             <div>
               <label className="block text-sm font-medium mb-2">Powered By</label>
-              <p className="text-xs text-muted mb-3">Footer text on login page. Default: "Powered by USDC on Base Sepolia"</p>
+              <p className="text-xs text-muted mb-3">Footer text on login page. Default: "Powered by USDC on Sepolia"</p>
               <input
                 type="text"
                 value={brandPoweredBy}
                 onChange={(e) => setBrandPoweredBy(e.target.value)}
-                placeholder="Powered by USDC on Base Sepolia"
+                placeholder="Powered by USDC on Sepolia"
                 className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -647,10 +641,10 @@ export default function SettingsPage() {
             <div className="pt-4 border-t border-border">
               <Button
                 onClick={handleSaveBrand}
-                disabled={brandSaving || !brandName.trim()}
+                disabled={brandIsLoading || !brandName.trim()}
                 className="w-full"
               >
-                {brandSaving ? "Saving..." : "Save Brand Settings"}
+                {brandIsLoading ? "Saving..." : "Save Brand Settings"}
               </Button>
             </div>
           </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAccount, useBalance, useReadContract } from "wagmi";
-import { sepolia } from "wagmi/chains";
+import { CHAIN_ID, CHAIN_NAME, USDC_ADDRESS } from "@/lib/chain";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -22,14 +22,14 @@ const ERC20_BALANCE_OF_ABI = [
 
 // Supported chains with their USDC contracts
 const SUPPORTED_CHAINS = [
-  { id: 11155111, name: "Sepolia", usdc: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" as `0x${string}` },
+  { id: CHAIN_ID, name: CHAIN_NAME, usdc: USDC_ADDRESS },
 ] as const;
 
 const USDC_DECIMALS = 6;
 
 export default function WalletPage() {
   const { address, chain } = useAccount();
-  const chainId = chain?.id || 11155111;
+  const chainId = chain?.id || CHAIN_ID;
 
   // ETH balance via wagmi
   const { data: ethBalance, isLoading: ethLoading } = useBalance({ address });
@@ -41,7 +41,7 @@ export default function WalletPage() {
     abi: ERC20_BALANCE_OF_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    chainId: sepolia.id,
+    chainId: CHAIN_ID,
     query: { enabled: !!address },
   });
 
@@ -64,7 +64,9 @@ export default function WalletPage() {
   const copyAddress = async () => {
     if (!address) return;
     try {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
       await navigator.clipboard.writeText(address);
+    }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {}
@@ -85,16 +87,6 @@ export default function WalletPage() {
   return (
     <>
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-primary-color">Account</h1>
-          <p className="text-muted">
-            Manage your account balance
-          </p>
-        </div>
-      </div>
-
       {/* Balance Card */}
       <Card className="bg-gradient-to-br from-primary to-primary-hover text-white">
         <div className="text-center">

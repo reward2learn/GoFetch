@@ -9,15 +9,15 @@ const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY || "0x" + "0".repe
 const config: HardhatUserConfig = {
   solidity: "0.8.20",
   networks: {
-    baseSepolia: {
-      url: "https://sepolia.base.org",
-      chainId: 84532,
+    sepolia: {
+      url: "https://ethereum-sepolia-rpc.publicnode.com",
+      chainId: 11155111,
       accounts: [DEPLOYER_PRIVATE_KEY],
     },
   },
   etherscan: {
     apiKey: {
-      baseSepolia: process.env.BASESCAN_API_KEY || "",
+      sepolia: process.env.ETHERSCAN_API_KEY || "",
     },
   },
 };

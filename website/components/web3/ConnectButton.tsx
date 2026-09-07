@@ -34,7 +34,9 @@ export function ConnectButton() {
         <div
           className="relative flex items-center gap-2 px-3 py-1 bg-surface-3 rounded-lg cursor-pointer group"
           onClick={() => {
-            navigator.clipboard.writeText(address);
+            if (typeof navigator !== "undefined" && navigator.clipboard) {
+              navigator.clipboard.writeText(address);
+            }
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
           }}

@@ -138,7 +138,7 @@ export default function DeliveryDetailPage() {
 
   const isTraveler = authUser?.id === order?.travelerId;
   const request = order?.request;
-  const image = request?.imageUrl || "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800&h=500&fit=crop";
+  const image = request?.imageUrls || "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800&h=500&fit=crop";
   const itemPrice = parseFloat(order?.itemPrice?.toString() || "0");
   const reward = parseFloat(order?.reward?.toString() || "0");
   const nextStatus = getNextStatus();

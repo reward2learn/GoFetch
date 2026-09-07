@@ -21,7 +21,7 @@ const defaultBrand: BrandSettings = {
   loadingGraphic: null,
   loginTagline: "P2P Global Shopping & Delivery",
   loginSubtitle: "Connect your wallet to start buying or delivering items worldwide.",
-  poweredBy: "Powered by USDC on Base Sepolia",
+  poweredBy: "Powered by USDC on Sepolia",
 };
 
 const BrandContext = createContext<BrandSettings>(defaultBrand);

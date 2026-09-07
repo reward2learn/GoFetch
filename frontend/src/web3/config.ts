@@ -4,7 +4,7 @@
 // contracts/USDCEscrow.sol) AND you build a native dev build (Reown AppKit is native-only).
 
 export const CHAIN = {
-  id: Number(process.env.EXPO_PUBLIC_CHAIN_ID || 84532),
+  id: Number(process.env.EXPO_PUBLIC_CHAIN_ID || 11155111),
   name: "Base Sepolia",
   rpcUrl: process.env.EXPO_PUBLIC_RPC_URL || "https://sepolia.base.org",
 };

@@ -63,7 +63,7 @@ class TestAuthAndChain:
         r = requests.get(f"{API}/chain/config")
         assert r.status_code == 200
         data = r.json()
-        assert data["chainId"] == 84532 and "live" in data
+        assert data["chainId"] == 11155111 and "live" in data
 
 
 # ---- Requests catalog ---------------------------------------------------

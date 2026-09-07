@@ -4,19 +4,17 @@ import { ReactNode } from "react";
 import { createAppKit } from "@reown/appkit/react";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { http } from "wagmi";
-import { sepolia, baseSepolia } from "wagmi/chains";
+import { sepolia } from "wagmi/chains";
 import { projectId, isReownConfigured } from "./config";
+import { CHAIN_ID } from "@/lib/chain";
 
 // Only create adapter if projectId is valid
-const networks = [sepolia, baseSepolia] as [typeof sepolia, typeof baseSepolia];
-
 const wagmiAdapter = isReownConfigured()
   ? new WagmiAdapter({
-      networks,
+      networks: [sepolia],
       projectId,
       transports: {
-        [sepolia.id]: http("https://ethereum-sepolia-rpc.publicnode.com"),
-        [baseSepolia.id]: http("https://sepolia.base.org"),
+        [sepolia.id]: http(),
       },
     })
   : null;
@@ -26,7 +24,7 @@ if (isReownConfigured() && wagmiAdapter) {
   createAppKit({
     adapters: [wagmiAdapter],
     projectId,
-    networks,
+    networks: [sepolia],
     metadata: {
       name: "GoFetch",
       description: "Global Shopping & Delivery Platform",

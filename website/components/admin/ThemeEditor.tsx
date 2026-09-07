@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Save, RefreshCw, FileCode2, RotateCcw, Download, Upload } from "lucide-react";
 
 interface ThemeValues {
   [key: string]: string;
@@ -710,111 +711,156 @@ export default function ThemeEditor() {
         </button>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-3 pt-4 border-t border-border">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-6 py-2.5 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors"
-        >
-          {saving ? "Saving..." : "Save Theme"}
-        </button>
-        <button
-          onClick={handleRegenerateButtons}
-          disabled={saving}
-          className="px-8 py-2.5 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors"
-        >
-          {saving ? "Regenerating..." : "Regenerate Buttons"}
-        </button>
-        <button
-          onClick={() => {
-            setSaving(true);
-            setMessage(null);
-            try {
-              // Regenerate button variants from current base colors
-              const lightBase = extractBaseColors("light");
-              const darkBase = extractBaseColors("dark");
-              const newTheme: ThemeData = {
-                light: { ...lightBase, ...generateButtonDefaults(lightBase, "light") },
-                dark: { ...darkBase, ...generateButtonDefaults(darkBase, "dark") },
-              };
-              setTheme(newTheme);
-              applyLive(newTheme);
-              setMessage({ type: "success", text: "All CSS variables generated from current theme colors" });
-            } catch (err) {
-              setMessage({ type: "error", text: err instanceof Error ? err.message : "Failed" });
-            } finally {
-              setSaving(false);
-            }
-          }}
-          disabled={saving}
-          className="px-8 py-2.5 bg-success text-white rounded-full text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-colors"
-        >
-          {saving ? "Generating..." : "Generate All CSS"}
-        </button>
-        <button
-          onClick={handleReset}
-          className="px-6 py-2.5 border border-border text-muted rounded-full text-sm font-medium hover:bg-surface-hover transition-colors"
-        >
-          Reset to Defaults
-        </button>
-        <button
-          onClick={() => {
-            const blob = new Blob([JSON.stringify({ ...theme, customCss }, null, 2)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `gofetch-theme-${new Date().toISOString().slice(0, 10)}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            setMessage({ type: "success", text: "Theme JSON downloaded" });
-          }}
-          className="px-6 py-2.5 border border-border text-muted rounded-full text-sm font-medium hover:bg-surface-hover transition-colors"
-        >
-          Download JSON
-        </button>
-        <label
-          className="px-6 py-2.5 border border-border text-muted rounded-full text-sm font-medium hover:bg-surface-hover transition-colors cursor-pointer"
-        >
-          Upload JSON
-          <input
-            type="file"
-            accept=".json"
-            className="hidden"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
+      {/* Actions — icon buttons with tooltips */}
+      <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-border">
+        {/* Save Theme */}
+        <div className="relative group/tool">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center justify-center w-10 h-10 sm:w-auto sm:px-4 sm:py-2.5 bg-primary text-white rounded-xl sm:rounded-full text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors"
+          >
+            <Save className="w-4 h-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">{saving ? "Saving..." : "Save"}</span>
+          </button>
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-surface-1 border border-border rounded-lg shadow-lg text-xs text-secondary whitespace-nowrap opacity-0 invisible group-hover/tool:opacity-100 group-hover/tool:visible transition-all z-50 pointer-events-none hidden sm:block">
+            Save Theme — Persist current colors to the database
+          </span>
+        </div>
+
+        {/* Regenerate Buttons */}
+        <div className="relative group/tool">
+          <button
+            onClick={handleRegenerateButtons}
+            disabled={saving}
+            className="flex items-center justify-center w-10 h-10 sm:w-auto sm:px-4 sm:py-2.5 bg-primary text-white rounded-xl sm:rounded-full text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 sm:mr-1.5 ${saving ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">{saving ? "Regenerating..." : "Regenerate"}</span>
+          </button>
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-surface-1 border border-border rounded-lg shadow-lg text-xs text-secondary whitespace-nowrap opacity-0 invisible group-hover/tool:opacity-100 group-hover/tool:visible transition-all z-50 pointer-events-none hidden sm:block">
+            Regenerate Buttons — Rebuild all button color variants from current base colors
+          </span>
+        </div>
+
+        {/* Generate All CSS */}
+        <div className="relative group/tool">
+          <button
+            onClick={() => {
+              setSaving(true);
+              setMessage(null);
               try {
-                const text = await file.text();
-                const parsed = JSON.parse(text);
-                if (!parsed.light || !parsed.dark) {
-                  setMessage({ type: "error", text: "Invalid theme JSON — must have light and dark keys" });
-                  return;
-                }
+                const lightBase = extractBaseColors("light");
+                const darkBase = extractBaseColors("dark");
                 const newTheme: ThemeData = {
-                  light: { ...DEFAULT_THEME.light, ...parsed.light },
-                  dark: { ...DEFAULT_THEME.dark, ...parsed.dark },
-                  customCss: parsed.customCss || "",
+                  light: { ...lightBase, ...generateButtonDefaults(lightBase, "light") },
+                  dark: { ...darkBase, ...generateButtonDefaults(darkBase, "dark") },
                 };
                 setTheme(newTheme);
-                if (parsed.customCss) setCustomCss(parsed.customCss);
                 applyLive(newTheme);
-                // Auto-save to database
-                const res = await fetch("/api/admin/theme", {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(newTheme),
-                });
-                if (!res.ok) throw new Error("Failed to save");
-                setMessage({ type: "success", text: "Theme uploaded and saved" });
+                setMessage({ type: "success", text: "All CSS variables generated from current theme colors" });
               } catch (err) {
-                setMessage({ type: "error", text: err instanceof Error ? err.message : "Invalid JSON" });
+                setMessage({ type: "error", text: err instanceof Error ? err.message : "Failed" });
+              } finally {
+                setSaving(false);
               }
             }}
-          />
-        </label>
+            disabled={saving}
+            className="flex items-center justify-center w-10 h-10 sm:w-auto sm:px-4 sm:py-2.5 bg-success text-white rounded-xl sm:rounded-full text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-colors"
+          >
+            <FileCode2 className="w-4 h-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">{saving ? "Generating..." : "Gen CSS"}</span>
+          </button>
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-surface-1 border border-border rounded-lg shadow-lg text-xs text-secondary whitespace-nowrap opacity-0 invisible group-hover/tool:opacity-100 group-hover/tool:visible transition-all z-50 pointer-events-none hidden sm:block">
+            Generate All CSS — Rebuild every CSS variable from the current base color values
+          </span>
+        </div>
+
+        {/* Reset to Defaults */}
+        <div className="relative group/tool">
+          <button
+            onClick={handleReset}
+            className="flex items-center justify-center w-10 h-10 sm:w-auto sm:px-4 sm:py-2.5 border border-border text-muted rounded-xl sm:rounded-full text-sm font-medium hover:bg-surface-hover hover:text-primary transition-colors"
+          >
+            <RotateCcw className="w-4 h-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Reset</span>
+          </button>
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-surface-1 border border-border rounded-lg shadow-lg text-xs text-secondary whitespace-nowrap opacity-0 invisible group-hover/tool:opacity-100 group-hover/tool:visible transition-all z-50 pointer-events-none hidden sm:block">
+            Reset to Defaults — Restore the original factory theme colors
+          </span>
+        </div>
+
+        {/* Download JSON */}
+        <div className="relative group/tool">
+          <button
+            onClick={() => {
+              const blob = new Blob([JSON.stringify({ ...theme, customCss }, null, 2)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `gofetch-theme-${new Date().toISOString().slice(0, 10)}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              setMessage({ type: "success", text: "Theme JSON downloaded" });
+            }}
+            className="flex items-center justify-center w-10 h-10 sm:w-auto sm:px-4 sm:py-2.5 border border-border text-muted rounded-xl sm:rounded-full text-sm font-medium hover:bg-surface-hover hover:text-primary transition-colors"
+          >
+            <Download className="w-4 h-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-surface-1 border border-border rounded-lg shadow-lg text-xs text-secondary whitespace-nowrap opacity-0 invisible group-hover/tool:opacity-100 group-hover/tool:visible transition-all z-50 pointer-events-none hidden sm:block">
+            Download JSON — Export the full theme as a .json backup file
+          </span>
+        </div>
+
+        {/* Upload JSON */}
+        <div className="relative group/tool">
+          <label className="flex items-center justify-center w-10 h-10 sm:w-auto sm:px-4 sm:py-2.5 border border-border text-muted rounded-xl sm:rounded-full text-sm font-medium hover:bg-surface-hover hover:text-primary transition-colors cursor-pointer">
+            <Upload className="w-4 h-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Import</span>
+            <input
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  const text = await file.text();
+                  const parsed = JSON.parse(text);
+                  if (!parsed.light || !parsed.dark) {
+                    setMessage({ type: "error", text: "Invalid theme JSON — must have light and dark keys" });
+                    return;
+                  }
+                  const newTheme: ThemeData = {
+                    light: { ...DEFAULT_THEME.light, ...parsed.light },
+                    dark: { ...DEFAULT_THEME.dark, ...parsed.dark },
+                    customCss: parsed.customCss || "",
+                  };
+                  setTheme(newTheme);
+                  if (parsed.customCss) setCustomCss(parsed.customCss);
+                  applyLive(newTheme);
+                  const res = await fetch("/api/admin/theme", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(newTheme),
+                  });
+                  if (!res.ok) throw new Error("Failed to save");
+                  setMessage({ type: "success", text: "Theme uploaded and saved" });
+                } catch (err) {
+                  setMessage({ type: "error", text: err instanceof Error ? err.message : "Invalid JSON" });
+                }
+              }}
+            />
+          </label>
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-surface-1 border border-border rounded-lg shadow-lg text-xs text-secondary whitespace-nowrap opacity-0 invisible group-hover/tool:opacity-100 group-hover/tool:visible transition-all z-50 pointer-events-none hidden sm:block">
+            Upload JSON — Import a .json theme file and apply it live
+          </span>
+        </div>
+
+        {/* Status message */}
         {message && (
-          <span className={`text-sm ${message.type === "success" ? "text-success" : "text-error"}`}>
+          <span className={`text-xs sm:text-sm ${message.type === "success" ? "text-success" : "text-error"} ml-1`}>
             {message.text}
           </span>
         )}

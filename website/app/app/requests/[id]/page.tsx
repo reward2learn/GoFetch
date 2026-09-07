@@ -2,11 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useAppSelector, useAppDispatch } from "@/redux/hooks";
+import { fetchExploreRequests, archiveRequest, matchTravelPlan } from "@/redux/slices/explore.slice";
+import {
+  selectExploreRequests,
+  selectExploreIsLoading,
+  selectExploreError,
+  selectIsAdmin,
+  selectExploreMatchResults,
+} from "@/redux/selectors";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { formatCurrency } from "@/lib/utils";
-import { useAppSelector } from "@/redux/hooks";
+import { ImageCarousel } from "@/components/ui/ImageCarousel";
 import { ChevronDown, ArrowLeft, MapPin, Calendar, Tag, Info } from "lucide-react";
 
 const CATEGORY_IMAGES: Record<string, string> = {
@@ -14,17 +23,22 @@ const CATEGORY_IMAGES: Record<string, string> = {
   Electronics: "https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=800&h=500&fit=crop",
   Fashion: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=800&h=500&fit=crop",
   Food: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=500&fit=crop",
-  Travel: "https://images.unsplash.com/photo-1436491865332-7a61a109db05?w=800&h=500&fit=crop",
+  Travel: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&h=500&fit=crop",
   Other: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800&h=500&fit=crop",
 };
 
 export default function RequestDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { user: authUser } = useAppSelector((s) => s.auth);
-  const [request, setRequest] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const exploreRequests = useAppSelector(selectExploreRequests) as any[];
+  const request = exploreRequests.find((r) => r.id === params.id) ?? null;
+  const isLoading = useAppSelector(selectExploreIsLoading);
+  const error = useAppSelector(selectExploreError);
+  const matchingPlans = useAppSelector(selectExploreMatchResults) as any[];
+  const isAdmin = useAppSelector(selectIsAdmin);
   const isOwner = authUser?.id === request?.buyerId;
 
   // Edit mode state
@@ -37,78 +51,21 @@ export default function RequestDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   // Travel plan matching state
-  const [matchingPlans, setMatchingPlans] = useState<any[]>([]);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
-    let ignore = false;
+    dispatch(fetchExploreRequests());
+  }, [dispatch, params.id]);
 
-    const fetchRequest = async () => {
-      try {
-        const res = await fetch(`/api/requests/${params.id}`, { signal: controller.signal });
-        if (!res.ok) throw new Error("Request not found");
-        const data = await res.json();
-        if (!ignore) setRequest(data);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        if (!ignore) setError(err instanceof Error ? err.message : "Failed to load request");
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    };
-
-    fetchRequest();
-    return () => { ignore = true; controller.abort(); };
-  }, [params.id]);
-
-  // Fetch traveler's plans to check for matches
   useEffect(() => {
     if (!request || isOwner) return;
-
-    const fetchPlans = async () => {
-      try {
-        const res = await fetch("/api/travel-plans/mine");
-        if (!res.ok) return;
-        const plans = await res.json();
-
-        // Filter plans that match the request's destination and timing
-        const matches = plans.filter((plan: any) => {
-          if (plan.status !== "active") return false;
-
-          // Check destination match (city match, or country match if city is TBD)
-          const destMatch =
-            (plan.toCity === request.toCity) ||
-            (plan.toCountry === request.toCountry && (!request.toCity || request.toCity === "TBD"));
-
-          if (!destMatch) return false;
-
-          // Check date range if deadline is set
-          if (request.deadline) {
-            const deadline = new Date(request.deadline);
-            const depart = new Date(plan.departDate);
-            const returnDate = plan.returnDate ? new Date(plan.returnDate) : null;
-
-            // Deadline must be after departure and before/on return (or no return date set)
-            if (deadline < depart) return false;
-            if (returnDate && deadline > returnDate) return false;
-          }
-
-          return true;
-        });
-
-        setMatchingPlans(matches);
-      } catch (err) {
-        console.error("Failed to fetch travel plans:", err);
-      }
-    };
-
-    fetchPlans();
-  }, [request, isOwner]);
+    dispatch(matchTravelPlan(request.id));
+  }, [request, isOwner, dispatch]);
 
   const startEdit = () => {
+    if (!request) return;
     setEditForm({
       title: request.title || "",
       description: request.description || "",
@@ -137,7 +94,6 @@ export default function RequestDetailPage() {
       });
       if (!res.ok) throw new Error("Failed to update");
       const updated = await res.json();
-      setRequest(updated);
       setEditing(false);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to save");
@@ -149,11 +105,7 @@ export default function RequestDetailPage() {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      const res = await fetch(`/api/requests/${params.id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to delete");
-      }
+      await dispatch(archiveRequest({ id: params.id as string, reason: "Admin deletion" })).unwrap();
       router.push("/app/explore");
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete");
@@ -189,7 +141,7 @@ export default function RequestDetailPage() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-6 max-w-6xl mx-auto">
         <div className="animate-pulse space-y-4">
@@ -210,7 +162,11 @@ export default function RequestDetailPage() {
     );
   }
 
-  const image = request.imageUrl || CATEGORY_IMAGES[request.category || "Other"] || CATEGORY_IMAGES.Other;
+  // Build the image list — prefer the request's uploaded images, fall back to
+  // a category-appropriate default.
+  const allImages: string[] = request.imageUrls && request.imageUrls.length > 0
+    ? request.imageUrls
+    : [CATEGORY_IMAGES[request.category || "Other"] || CATEGORY_IMAGES.Other];
 
   return (
     <>
@@ -328,14 +284,18 @@ export default function RequestDetailPage() {
             {/* ─── LEFT: Image ─── */}
             <div className="md:w-[45%] shrink-0">
               <div className="relative aspect-[3/4] min-h-[400px] md:min-h-[400px] rounded-2xl overflow-hidden bg-surface-2">
-                <img
-                  src={image}
+                <ImageCarousel
+                  images={allImages}
                   alt={request.title}
-                  className="w-full h-full object-cover"
+                  imgClassName="object-cover w-full h-full"
+                  showIndicators
+                  showArrows
+                  rounded="rounded-2xl"
+                  aspect="aspect-[3/4]"
                 />
 
                 {/* Category badge — top left */}
-                <span className="absolute top-4 left-4 text-xs font-medium px-3 py-1.5 bg-black/50 backdrop-blur-sm rounded-full text-white shadow-sm">
+                <span className="absolute top-4 left-4 text-xs font-medium px-3 py-1.5 bg-black/50 backdrop-blur-sm rounded-full text-white shadow-sm z-10">
                   {request.category || "Other"}
                 </span>
 

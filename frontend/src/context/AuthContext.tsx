@@ -14,6 +14,8 @@ export type User = {
   reviewsCount: number;
   ordersCompleted: number;
   tripsCompleted: number;
+  topTraveller?: boolean;
+  acceptedTerms?: boolean;
 };
 
 type AuthState = {

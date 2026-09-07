@@ -1,18 +1,23 @@
 "use client";
+// v2.1 - KYC Status button
 
 import { useState, useEffect, useRef } from "react";
 import { useAppSelector, useAppDispatch } from "@/redux/hooks";
 import { setUser as setReduxUser } from "@/redux/slices/auth.slice";
+import { fetchProfile, updateProfile, uploadPassport, submitKyc, checkKycStatus, fetchOrderCounts } from "@/redux/slices/profile.slice";
+import { selectProfile, selectProfileIsLoading, selectProfileKycStatus, selectProfileOrdersCount, selectProfileRequestsCount } from "@/redux/selectors";
 import Link from "next/link";
 import { runPassportOcr, terminatePassportOcr } from "@/lib/passport-ocr";
 
 export default function ProfilePage() {
   const { user: authUser } = useAppSelector((s) => s.auth);
-  const [user, setUserState] = useState<any>(null);
   const dispatch = useAppDispatch();
-  const [loading, setLoading] = useState(true);
-  const [orderCount, setOrderCount] = useState(0);
-  const [tripCount, setTripCount] = useState(0);
+
+  const profile = useAppSelector(selectProfile) as any;
+  const kycStatus = useAppSelector(selectProfileKycStatus);
+  const orderCount = useAppSelector(selectProfileOrdersCount);
+  const tripCount = useAppSelector(selectProfileRequestsCount);
+
   const [editingName, setEditingName] = useState(false);
   const [editName, setEditName] = useState("");
   const [emailDraft, setEmailDraft] = useState("");
@@ -25,6 +30,7 @@ export default function ProfilePage() {
   const [passportScanProgress, setPassportScanProgress] = useState(0);
   const [passportData, setPassportData] = useState<{
     fullName: string;
+    passportDocumentNo: string;
     documentType: string;
     documentNumber: string;
     nationality: string;
@@ -37,51 +43,51 @@ export default function ProfilePage() {
   const [savingPassportData, setSavingPassportData] = useState(false);
   const [submittingKyc, setSubmittingKyc] = useState(false);
   const [kycSubmitted, setKycSubmitted] = useState(false);
+  const [passportModalOpen, setPassportModalOpen] = useState(false);
+  const [checkingKyc, setCheckingKyc] = useState(false);
+
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    const controller = new AbortController();
-    let ignore = false;
+    dispatch(fetchProfile());
+    dispatch(fetchOrderCounts());
+  }, [dispatch]);
 
-    const fetchProfile = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/auth/me", { signal: controller.signal });
-        if (res.ok) {
-          const data = await res.json();
-          if (!ignore) setUserState(data);
-        } else if (authUser) {
-          if (!ignore) setUserState(authUser);
-        }
-      } catch {
-        if (!ignore && authUser) setUserState(authUser);
-      } finally {
-        if (!ignore) setLoading(false);
+  useEffect(() => {
+    if (profile && !initializedRef.current) {
+      initializedRef.current = true;
+      const hasPassportFields =
+        profile.passportDocumentNo ||
+        profile.passportFullName ||
+        profile.passportNationality ||
+        profile.passportPlaceOfBirth ||
+        profile.passportImageUrl ||
+        profile.passportDateOfBirth ||
+        profile.passportSex ||
+        profile.passportExpiryDate ||
+        profile.passportDateOfIssue;
+      if (hasPassportFields) {
+        setPassportData({
+          passportDocumentNo: profile.passportDocumentNo || "",
+          fullName: profile.passportFullName || "",
+          documentType: "P",
+          documentNumber: profile.passportDocumentNo || "",
+          nationality: profile.passportNationality || "",
+          dateOfBirth: profile.passportDateOfBirth
+            ? new Date(profile.passportDateOfBirth).toISOString().slice(0, 10)
+            : "",
+          sex: profile.passportSex || "",
+          expiryDate: profile.passportExpiryDate
+            ? new Date(profile.passportExpiryDate).toISOString().slice(0, 10)
+            : "",
+          dateOfIssue: profile.passportDateOfIssue
+            ? new Date(profile.passportDateOfIssue).toISOString().slice(0, 10)
+            : "",
+          placeOfBirth: profile.passportPlaceOfBirth || "",
+        });
       }
-    };
-
-    const fetchCounts = async () => {
-      try {
-        const res = await fetch("/api/orders", { signal: controller.signal });
-        if (res.ok) {
-          const data = await res.json();
-          const items = Array.isArray(data) ? data : data.orders || data.items || [];
-          if (!ignore) {
-            setOrderCount(items.filter((o: any) => o.role === "buyer").length);
-            setTripCount(items.filter((o: any) => o.role === "traveler").length);
-          }
-        }
-      } catch {
-        // silently ignore
-      }
-    };
-
-    fetchProfile();
-    fetchCounts();
-    return () => {
-      ignore = true;
-      controller.abort();
-    };
-  }, []);
+    }
+  }, [profile]);
 
   // Release the Tesseract.js worker + WASM memory when the page unmounts.
   useEffect(() => {
@@ -90,10 +96,10 @@ export default function ProfilePage() {
     };
   }, []);
 
-  const initials = user?.name
-    ? user.name.startsWith("0x")
+  const initials = authUser?.name
+    ? authUser?.name.startsWith("0x")
       ? "GF"
-      : user.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()
+      : authUser?.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()
     : "??";
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,16 +110,8 @@ export default function ProfilePage() {
     reader.onload = async () => {
       const base64 = reader.result as string;
       try {
-        const res = await fetch("/api/user/profile", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ avatarUrl: base64 }),
-        });
-        if (res.ok) {
-          setUserState((prev: any) => ({ ...prev, avatarUrl: base64 }));
-          // Sync to Redux so sidebar updates immediately
-          dispatch(setReduxUser(authUser ? { ...authUser, avatarUrl: base64 } : null));
-        }
+        const result = await dispatch(updateProfile({ avatarUrl: base64 })).unwrap();
+        if (authUser) dispatch(setReduxUser({ ...authUser, avatarUrl: base64 }));
       } catch {
         // silently ignore
       }
@@ -122,24 +120,16 @@ export default function ProfilePage() {
   };
 
   const startEditName = () => {
-    setEditName(user?.name || "");
+    setEditName(authUser?.name || "");
     setEditingName(true);
   };
 
   const saveName = async () => {
     const trimmed = editName.trim();
-    if (trimmed && trimmed !== user?.name) {
+    if (trimmed && trimmed !== authUser?.name) {
       try {
-        const res = await fetch("/api/user/profile", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: trimmed }),
-        });
-        if (res.ok) {
-          setUserState((prev: any) => ({ ...prev, name: trimmed }));
-          // Sync to Redux so sidebar updates immediately
-          dispatch(setReduxUser(authUser ? { ...authUser, name: trimmed } : null));
-        }
+        await dispatch(updateProfile({ name: trimmed })).unwrap();
+        if (authUser) dispatch(setReduxUser({ ...authUser, name: trimmed }));
       } catch {
         // silently ignore
       }
@@ -161,15 +151,8 @@ export default function ProfilePage() {
       const dataUrl = reader.result as string;
       // 1) Save the image
       try {
-        const imgRes = await fetch("/api/user/profile", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ passportImageUrl: dataUrl }),
-        });
-        if (imgRes.ok) {
-          setUserState((prev: any) => ({ ...prev, passportImageUrl: dataUrl }));
-          dispatch(setReduxUser(authUser ? { ...authUser, passportImageUrl: dataUrl } : null));
-        }
+        await dispatch(updateProfile({ passportImageUrl: dataUrl })).unwrap();
+        if (authUser) dispatch(setReduxUser({ ...authUser, passportImageUrl: dataUrl }));
       } catch (err) {
         console.error("Failed to upload passport image:", err);
       } finally {
@@ -190,28 +173,20 @@ export default function ProfilePage() {
         console.error("Client-side passport OCR failed:", err);
       }
       try {
-        const scanRes = await fetch("/api/scan/passport", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: dataUrl, ocrText }),
+        const result = await dispatch(uploadPassport({ file })).unwrap();
+        const f = result;
+        setPassportData({
+          passportDocumentNo: (f.passportDocumentNo || "") || f.passportDocumentNo || "",
+          fullName: f.passportFullName || f.passportFullName || "",
+          documentType: "P",
+          documentNumber: f.passportDocumentNo || "",
+          nationality: f.passportNationality || "",
+          dateOfBirth: f.passportDateOfBirth || "",
+          sex: f.passportSex || "",
+          expiryDate: f.passportExpiryDate || "",
+          dateOfIssue: f.passportDateOfIssue || "",
+          placeOfBirth: f.passportPlaceOfBirth || "",
         });
-        if (scanRes.ok) {
-          const data = await scanRes.json();
-          const f = data?.fields || {};
-          setPassportData({
-            fullName: f.fullName || f.surname || "",
-            documentType: f.documentType || "P",
-            documentNumber: f.documentNumber || "",
-            nationality: f.nationality || "",
-            dateOfBirth: f.dateOfBirth || "",
-            sex: f.sex || "",
-            expiryDate: f.expiryDate || "",
-            dateOfIssue: f.dateOfIssue || "",
-            placeOfBirth: f.placeOfBirth || "",
-          });
-        } else {
-          console.warn("Passport scan failed:", scanRes.status);
-        }
       } catch (err) {
         console.error("Passport scan error:", err);
       } finally {
@@ -226,25 +201,17 @@ export default function ProfilePage() {
     if (!passportData) return;
     setSavingPassportData(true);
     try {
-      const res = await fetch("/api/user/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          passportFullName: passportData.fullName || null,
-          passportDocumentNo: passportData.documentNumber || null,
-          passportNationality: passportData.nationality || null,
-          passportDateOfBirth: passportData.dateOfBirth || null,
-          passportSex: passportData.sex || null,
-          passportExpiryDate: passportData.expiryDate || null,
-          passportDateOfIssue: passportData.dateOfIssue || null,
-          passportPlaceOfBirth: passportData.placeOfBirth || null,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUserState((prev: any) => ({ ...prev, ...data }));
-        dispatch(setReduxUser(authUser ? { ...authUser, ...data } : null));
-      }
+      await dispatch(updateProfile({
+        passportFullName: passportData.fullName || authUser?.passportFullName || undefined,
+        passportDocumentNo: passportData.passportDocumentNo || passportData.documentNumber || authUser?.passportDocumentNo || undefined,
+        passportNationality: passportData.nationality || authUser?.passportNationality || undefined,
+        passportDateOfBirth: passportData.dateOfBirth || authUser?.passportDateOfBirth || undefined,
+        passportSex: passportData.sex || authUser?.passportSex || undefined,
+        passportExpiryDate: passportData.expiryDate || authUser?.passportExpiryDate || undefined,
+        passportDateOfIssue: passportData.dateOfIssue || authUser?.passportDateOfIssue || undefined,
+        passportPlaceOfBirth: passportData.placeOfBirth || authUser?.passportPlaceOfBirth || undefined,
+      })).unwrap();
+      if (authUser) dispatch(setReduxUser({ ...authUser, ...profile }));
     } catch (err) {
       console.error("Failed to save passport data:", err);
     } finally {
@@ -258,28 +225,43 @@ export default function ProfilePage() {
   const handleSubmitKyc = async () => {
     setSubmittingKyc(true);
     try {
-      const res = await fetch("/api/kyc/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setKycSubmitted(true);
-        // Refresh user state to reflect verified kycStatus
-        const profileRes = await fetch("/api/auth/me");
-        if (profileRes.ok) {
-          const profile = await profileRes.json();
-          setUserState(profile);
-        }
-      } else {
-        const err = await res.json();
-        alert(err.error || "Failed to submit KYC");
-      }
+      const result = await dispatch(submitKyc()).unwrap();
+      setKycSubmitted(true);
+      // Refresh auth state via Redux to reflect verified kycStatus
+      await dispatch(fetchProfile());
     } catch (err) {
       console.error("KYC submission failed:", err);
-      alert("Network error. Please try again.");
+      try {
+        const result = await dispatch(submitKyc()).unwrap();
+        setKycSubmitted(true);
+        // Refresh auth state via Redux
+      } catch {
+        alert(err instanceof Error ? err.message : "Failed to submit KYC");
+      }
     } finally {
       setSubmittingKyc(false);
+    }
+  };
+
+  /** Check KYC status from the server and update the profile endpoint. */
+  const handleCheckKyc = async () => {
+    setCheckingKyc(true);
+    try {
+      const result = await dispatch(checkKycStatus()).unwrap();
+      if (result.kycStatus === "verified") {
+        // Sync to Redux if verified
+        if (authUser) {
+          dispatch(setReduxUser({ ...authUser, kycStatus: "verified" }));
+        }
+        // Also update the profile endpoint with the verified status
+        if (authUser) {
+          await dispatch(updateProfile({ kycStatus: "verified" })).unwrap();
+        }
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setCheckingKyc(false);
     }
   };
 
@@ -289,19 +271,12 @@ export default function ProfilePage() {
       alert("Please enter a valid email address.");
       return;
     }
-    if (trimmed === user?.email) return;
+    if (trimmed === authUser?.email) return;
     setSavingEmail(true);
     try {
-      const res = await fetch("/api/user/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed }),
-      });
-      if (res.ok) {
-        setUserState((prev: any) => ({ ...prev, email: trimmed }));
-        dispatch(setReduxUser(authUser ? { ...authUser, email: trimmed } : null));
-        setEmailDraft("");
-      }
+      await dispatch(updateProfile({ email: trimmed })).unwrap();
+      if (authUser) dispatch(setReduxUser({ ...authUser, email: trimmed }));
+      setEmailDraft("");
     } catch (err) {
       console.error("Failed to save email:", err);
     } finally {
@@ -309,17 +284,6 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-0 space-y-0">
-        <div className="animate-pulse flex flex-col items-center py-8">
-          <div className="w-24 h-24 bg-surface-2 rounded-full mb-4" />
-          <div className="h-6 bg-surface-2 rounded w-1/3 mb-2" />
-          <div className="h-4 bg-surface-2 rounded w-1/2" />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-0 space-y-0">
@@ -330,8 +294,8 @@ export default function ProfilePage() {
           onClick={() => fileInputRef.current?.click()}
           className="relative group w-24 h-24 rounded-full bg-success overflow-hidden mb-4 shrink-0"
         >
-          {user?.avatarUrl ? (
-            <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+          {authUser?.avatarUrl ? (
+            <img src={authUser?.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
           ) : (
             <span className="text-3xl font-bold text-primary-color flex items-center justify-center w-full h-full">
               {initials}
@@ -340,14 +304,9 @@ export default function ProfilePage() {
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              width="24" height="24" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round"
               className="text-white"
             >
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
@@ -382,17 +341,12 @@ export default function ProfilePage() {
             className="flex items-center gap-1.5 mb-1 cursor-pointer group"
             onClick={startEditName}
           >
-            <h1 className="text-xl font-bold">{user?.name || "Anonymous"}</h1>
+            <h1 className="text-xl font-bold">{authUser?.name || "Anonymous"}</h1>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              width="16" height="16" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round"
               className="text-muted opacity-0 group-hover:opacity-100 transition-opacity"
             >
               <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
@@ -402,14 +356,25 @@ export default function ProfilePage() {
         )}
 
         {/* Email */}
-        <p className="text-sm text-muted mb-3">{user?.email || "No email"}</p>
+        <p className="text-sm text-muted mb-3">{authUser?.email || "No email"}</p>
 
         {/* KYC badge */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-success rounded-full mb-5">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-success">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
-          <span className="text-sm font-medium text-primary-color">{user?.kycStatus === "verified" ? "KYC Verified" : "Unverified"}</span>
+          <span className="text-sm font-medium text-primary-color">
+            {kycStatus === "verified" ? "KYC Verified" : authUser?.kycStatus === "verified" ? "KYC Verified" : checkingKyc ? "Checking..." : "Unverified"}
+          </span>
+          <button
+            type="button"
+            onClick={handleCheckKyc}
+            disabled={checkingKyc}
+            className="ml-2 px-2 py-0.5 bg-primary/20 text-primary text-xs font-medium rounded hover:bg-primary/30 disabled:opacity-50 transition-colors"
+            title="Check your current KYC verification status"
+          >
+            {checkingKyc ? "..." : "KYC Status"}
+          </button>
         </div>
 
         {/* Stats row */}
@@ -455,8 +420,8 @@ export default function ProfilePage() {
               onClick={() => fileInputRef.current?.click()}
               className="relative group w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center text-2xl font-bold select-none overflow-hidden shrink-0 hover:ring-2 hover:ring-primary/50 transition-all"
             >
-              {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              {authUser?.avatarUrl ? (
+                <img src={authUser?.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 <span className="flex items-center justify-center w-full h-full">{initials}</span>
               )}
@@ -478,7 +443,7 @@ export default function ProfilePage() {
             <input
               type="text"
               placeholder="Enter your name"
-              value={editingName ? editName : (user?.name || "")}
+              value={editingName ? editName : (authUser?.name || "")}
               onFocus={startEditName}
               onChange={(e) => setEditName(e.target.value)}
               onKeyDown={(e) => {
@@ -495,7 +460,7 @@ export default function ProfilePage() {
             <input
               type="email"
               placeholder="you@example.com"
-              defaultValue={user?.email && !user.email.endsWith("@wallet.local") ? user.email : ""}
+              defaultValue={authUser?.email && !authUser?.email.endsWith("@wallet.local") ? authUser?.email : ""}
               onChange={(e) => setEmailDraft(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleSaveEmail(); }}
               className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -524,10 +489,10 @@ export default function ProfilePage() {
               if (savingProfile) return;
               setSavingProfile(true);
               try {
-                if (editingName && editName.trim() && editName.trim() !== user?.name) {
+                if (editingName && editName.trim() && editName.trim() !== authUser?.name) {
                   await saveName();
                 }
-                if (emailDraft.trim() && emailDraft.trim() !== user?.email) {
+                if (emailDraft.trim() && emailDraft.trim() !== authUser?.email) {
                   await handleSaveEmail();
                 }
               } finally {
@@ -547,31 +512,32 @@ export default function ProfilePage() {
         {(() => {
           // Step-completion booleans — reflect actual local progress
           // (the backend kycStatus field only changes after a separate KYC review).
-          const hasRealName = !!user?.name && !user.name.startsWith("0x") && !user.name.startsWith("User 0x");
-          const hasAvatar = !!user?.avatarUrl;
-          const hasRealEmail = !!user?.email && !user.email.endsWith("@wallet.local");
+          const hasRealName = !!authUser?.name && !authUser?.name.startsWith("0x") && !authUser?.name.startsWith("User 0x");
+          const hasAvatar = !!authUser?.avatarUrl;
+          const hasRealEmail = !!authUser?.email && !authUser?.email.endsWith("@wallet.local");
           // Step is complete when BOTH the image is uploaded AND the scanned data
           // has been saved to the profile (so the KYC reviewer has the extracted fields).
-          const hasPassport = !!user?.passportImageUrl && !!user?.passportFullName;
+          const hasPassport = !!authUser?.passportImageUrl && !!authUser?.passportFullName;
           const allDone = hasRealName && hasAvatar && hasRealEmail && hasPassport;
 
           // Badge reflects backend KYC status if set, otherwise local progress
-          const badgeLabel = user?.kycStatus === "verified"
+          const currentStatus = kycStatus || authUser?.kycStatus || "none";
+          const badgeLabel = currentStatus === "verified"
             ? "Verified"
-            : user?.kycStatus === "pending"
+            : currentStatus === "pending"
             ? "Under Review"
             : allDone
             ? "Ready to Submit"
             : "Not Started";
-          const badgeClass = user?.kycStatus === "verified"
+          const badgeClass = currentStatus === "verified"
             ? "bg-success text-white"
-            : user?.kycStatus === "pending"
+            : currentStatus === "pending"
             ? "bg-warning text-white"
             : allDone
             ? "bg-primary text-white"
             : "bg-surface-2 text-muted";
 
-          const steps = [
+          const steps: Array<any> = [
             {
               done: hasRealName,
               icon: "user",
@@ -653,7 +619,7 @@ export default function ProfilePage() {
                     {!hasRealName && (
                       <input
                         type="text"
-                        defaultValue={user?.name || ""}
+                        defaultValue={authUser?.name || ""}
                         onFocus={startEditName}
                         onKeyDown={(e) => { if (e.key === "Enter") startEditName(); }}
                         placeholder="Your display name"
@@ -710,7 +676,7 @@ export default function ProfilePage() {
                     <div className="mt-2 flex gap-2">
                       <input
                         type="email"
-                        defaultValue={user?.email && !user.email.endsWith("@wallet.local") ? user.email : ""}
+                        defaultValue={authUser?.email && !authUser?.email.endsWith("@wallet.local") ? authUser?.email : ""}
                         onChange={(e) => setEmailDraft(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") handleSaveEmail(); }}
                         placeholder="you@example.com"
@@ -800,14 +766,12 @@ export default function ProfilePage() {
                             <label className="block text-[10px] text-muted mb-0.5">Document No.</label>
                             <input
                               type="text"
-                              value={passportData.documentNumber ? passportData.documentType + " " + passportData.documentNumber : passportData.documentType}
+                              value={passportData.passportDocumentNo || passportData.documentNumber || passportData.documentType}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                const typePart = val.split(" ")[0] || "";
-                                const numPart = val.slice(typePart.length + 1) || "";
-                                setPassportData({ ...passportData, documentType: typePart, documentNumber: numPart });
+                                setPassportData({ ...passportData, documentNumber: val, passportDocumentNo: val });
                               }}
-                              placeholder="P A8306393"
+                              placeholder="PA1234567"
                               className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                             />
                           </div>
@@ -897,14 +861,49 @@ export default function ProfilePage() {
                     )}
 
                     {/* Show uploaded passport image when available */}
-                    {user?.passportImageUrl && (
+                    {authUser?.passportImageUrl && (
                       <div className="mt-2">
                         <p className="text-[10px] text-muted mb-1">Uploaded document:</p>
-                        <img
-                          src={user.passportImageUrl}
-                          alt="Passport"
-                          className="w-full max-h-40 object-cover rounded-lg border border-border"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setPassportModalOpen(true)}
+                          className="cursor-pointer block rounded-lg border border-border overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all"
+                        >
+                          <img
+                            src={authUser?.passportImageUrl}
+                            alt="Passport"
+                            className="w-24 h-16 object-cover"
+                          />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Passport image modal popup */}
+                    {passportModalOpen && (
+                      <div
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+                        onClick={() => setPassportModalOpen(false)}
+                      >
+                        <div
+                          className="relative max-w-4xl w-full mx-4"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setPassportModalOpen(false)}
+                            className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M18 6 6 18"/>
+                              <path d="m6 6 12 12"/>
+                            </svg>
+                          </button>
+                          <img
+                            src={authUser?.passportImageUrl}
+                            alt="Passport"
+                            className="w-full rounded-xl border border-border shadow-2xl"
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
@@ -925,7 +924,7 @@ export default function ProfilePage() {
 
         {/* "Submit for KYC Review" button — shown once user is not yet verified.
             *  The badge above indicates "Ready to Submit" when all 4 steps are complete. */}
-        {user?.kycStatus !== "verified" && (
+        {(kycStatus || authUser?.kycStatus) !== "verified" && (
           <div className="mt-4 pt-4 border-t border-border">
             {kycSubmitted ? (
               <div className="text-center py-2 px-3 bg-success/10 border border-success/30 rounded-lg text-sm text-success font-medium">

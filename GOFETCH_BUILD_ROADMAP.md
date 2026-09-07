@@ -507,7 +507,7 @@ After env vars are set, the service triggers a Vercel deployment via:
 {
   "framework": "nextjs",
   "buildCommand": "bash scripts/vercel-build.sh",
-  "installCommand": "npm install",
+  "installCommand": "bun install",
   "outputDirectory": ".next"
 }
 ```

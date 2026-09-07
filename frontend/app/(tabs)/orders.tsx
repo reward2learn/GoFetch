@@ -77,9 +77,9 @@ export default function Orders() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <AppText weight="extrabold" size={type["2xl"]}>
+        {/* <AppText weight="extrabold" size={type["2xl"]}>
           My Orders
-        </AppText>
+        </AppText> */}
         <View style={styles.segment}>
           {FILTERS.map((f) => (
             <Pressable

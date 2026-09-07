@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { useAccount, useSignMessage } from "wagmi";
+import { useAppKitAccount, useAppKitConnections } from "@reown/appkit/react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -24,6 +25,8 @@ export default function LoginPageClient() {
   const configured = isReownConfigured();
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
+  const { embeddedWalletInfo } = useAppKitAccount();
+  const { connections } = useAppKitConnections();
   const router = useRouter();
   const dispatch = useAppDispatch();
   const brand = useBrand();
@@ -59,6 +62,31 @@ export default function LoginPageClient() {
   }, [dispatch]);
 
   // Stable sign-in trigger using ref for signMessageAsync to avoid re-triggering
+  // Build social profile data from AppKit embedded wallet info + connections
+  const socialProfile = useCallback(() => {
+    // Try embeddedWalletInfo first (Google/Apple/email login)
+    const ewUser = embeddedWalletInfo?.user;
+    const authProvider = embeddedWalletInfo?.authProvider;
+
+    // Fallback to connections auth data
+    const connAuth = connections.find((c) => c.auth)?.auth;
+
+    const name = ewUser?.username || connAuth?.name || undefined;
+    const email = ewUser?.email || undefined;
+    // profileImage is on the account state, accessible via embeddedWalletInfo in some versions
+    // We use it if available, otherwise undefined (Google avatar will be fetched later if needed)
+    const avatarUrl = (embeddedWalletInfo as any)?.profileImage || undefined;
+
+    if (!name && !email && !authProvider) return undefined;
+
+    return {
+      name,
+      email,
+      avatarUrl,
+      authProvider: authProvider || (connAuth ? "social" : undefined),
+    };
+  }, [embeddedWalletInfo, connections]);
+
   const triggerSignIn = useCallback(() => {
     if (
       sessionChecked &&
@@ -69,9 +97,13 @@ export default function LoginPageClient() {
       !signInAttempted.current
     ) {
       signInAttempted.current = true;
-      dispatch(signInWithWallet({ address, signMessageAsync: signMessageAsyncRef.current }));
+      dispatch(signInWithWallet({
+        address,
+        signMessageAsync: signMessageAsyncRef.current,
+        socialProfile: socialProfile(),
+      }));
     }
-  }, [sessionChecked, reduxWalletConnected, address, isAuthenticated, authLoading, dispatch]);
+  }, [sessionChecked, reduxWalletConnected, address, isAuthenticated, authLoading, dispatch, socialProfile]);
 
   // Trigger SIWE sign-in when wallet is connected and session check is done
   useEffect(() => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HomeIcon, PackageIcon, MapIcon, MessageSquare, SettingsIcon, WalletIcon, UserIcon, LogOutIcon, XIcon, HelpCircleIcon, FileTextIcon, ShieldIcon } from "lucide-react";
@@ -7,7 +8,7 @@ import { useAppSelector } from "@/redux/hooks";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useLogout } from "@/lib/useLogout";
 
-const navItems = [
+const baseNavItems = [
   { href: "/app/explore", label: "Explore", icon: HomeIcon },
   { href: "/app/orders", label: "My Orders", icon: PackageIcon },
   { href: "/app/trips", label: "Travel Plans", icon: MapIcon },
@@ -16,9 +17,20 @@ const navItems = [
   { href: "/app/profile", label: "Profile", icon: UserIcon },
   { href: "/app/settings", label: "Settings", icon: SettingsIcon },
   { href: "/app/qa", label: "Q&A", icon: HelpCircleIcon },
-  { href: "/terms", label: "Terms", icon: FileTextIcon },
-  { href: "/privacy", label: "Privacy", icon: ShieldIcon },
+  { href: "/app/terms", label: "Terms", icon: FileTextIcon },
+  { href: "/app/privacy", label: "Privacy", icon: ShieldIcon },
 ];
+
+const adminNavItems = [
+  { href: "/app/admin/kyc", label: "KYC Management", icon: ShieldIcon },
+];
+
+function getNavItems(isAdminUser: boolean) {
+  if (isAdminUser) {
+    return [...baseNavItems, ...adminNavItems];
+  }
+  return baseNavItems;
+}
 
 interface AppSidebarProps {
   collapsed: boolean;
@@ -32,6 +44,14 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: AppSideba
   const brand = useBrand();
   const { user: authUser } = useAppSelector((s) => s.auth);
   const handleLogout = useLogout();
+  const [isAdminUser, setIsAdminUser] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/check")
+      .then((res) => res.json())
+      .then((data) => setIsAdminUser(data.isAdmin))
+      .catch(() => setIsAdminUser(false));
+  }, []);
 
   const initials = authUser?.name?.startsWith("0x")
     ? "GF"
@@ -69,10 +89,26 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: AppSideba
             <XIcon className="h-5 w-5 text-muted" />
           </button>
         </div>
-
+               {/* User profile section */}
+        <div className="border-t border-border p-0 space-y-3">
+          {/* User info */}
+          <Link href="/app/profile" onClick={onClose} className="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-hover transition-colors">
+            <div className="w-10 h-10 rounded-full  text-white flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden">
+              {authUser?.avatarUrl ? (
+                <img src={authUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{authUser?.name || "Guest"}</p>
+              <p className="text-xs text-muted truncate">{authUser?.email || "No email"}</p>
+            </div>
+          </Link> 
+        </div>
         {/* Nav items */}
         <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto min-h-0">
-          {navItems.map((item) => {
+          {getNavItems(isAdminUser).map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Link
@@ -91,26 +127,9 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: AppSideba
             );
           })}
         </nav>
-
-        {/* User profile section */}
-        <div className="border-t border-border p-4 space-y-3">
-          {/* User info */}
-          <Link href="/app/profile" onClick={onClose} className="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-hover transition-colors">
-            <div className="w-10 h-10 rounded-full  text-white flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden">
-              {authUser?.avatarUrl ? (
-                <img src={authUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                initials
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate">{authUser?.name || "Guest"}</p>
-              <p className="text-xs text-muted truncate">{authUser?.email || "No email"}</p>
-            </div>
-          </Link>
-
-          {/* Logout button */}
-          <button
+          <div className="p-3 border-t border-border">
+           {/* Logout button */}
+           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-colors border border-error/20"
           >
@@ -130,7 +149,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: AppSideba
       } bg-surface-1 border-r border-border flex flex-col transition-all duration-300`}
     >
       {/* Logo area */}
-      <div className={`${collapsed ? "p-4" : "p-6"}`}>
+      <div className={`${collapsed ? "p-3" : "p-3"}`}>
         <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
           <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
             {brand.logo ? (
@@ -147,10 +166,55 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: AppSideba
           )}
         </div>
       </div>
+      
 
+      {/* User profile — collapsed avatar + logout */}
+      {/* {collapsed && (
+        <div className="p-2 border-t border-border flex flex-col items-center gap-2">
+          <Link href="/app/profile" className="w-10 h-10 rounded-full  text-white flex items-center justify-center text-sm font-bold overflow-hidden">
+            {authUser?.avatarUrl ? (
+              <img src={authUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              initials
+            )}
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="p-2 rounded-lg text-error hover:bg-error/10 transition-colors"
+            title="Log out"
+          >
+            <LogOutIcon className="h-4 w-4" />
+          </button>
+        </div>
+      )} */}
+      {/* User profile — hidden when collapsed */}
+      {!collapsed && (
+        <div className="p-0 border-t border-border space-y-2">
+          <Link href="/app/profile" className="flex items-center gap-3 p-4 rounded-lg hover:bg-surface-hover transition-colors">
+            <div className="w-10 h-10 rounded-full text-white flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden">
+              {authUser?.avatarUrl ? (
+                <img src={authUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{authUser?.name || "Guest"}</p>
+              <p className="text-xs text-muted truncate">{authUser?.email || "No email"}</p>
+            </div>
+          </Link>
+          {/* <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-colors border border-error/20"
+          >
+            <LogOutIcon className="h-4 w-4" />
+            Log Out
+          </button> */}
+        </div>
+      )}
       {/* Nav items */}
       <nav className="flex-1 px-2 space-y-1 overflow-y-auto min-h-0">
-        {navItems.map((item) => {
+        {getNavItems(isAdminUser).map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
@@ -192,51 +256,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: AppSideba
         </button>
       </div>
 
-      {/* User profile — hidden when collapsed */}
-      {!collapsed && (
-        <div className="p-4 border-t border-border space-y-2">
-          <Link href="/app/profile" className="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-hover transition-colors">
-            <div className="w-10 h-10 rounded-full text-white flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden">
-              {authUser?.avatarUrl ? (
-                <img src={authUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                initials
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate">{authUser?.name || "Guest"}</p>
-              <p className="text-xs text-muted truncate">{authUser?.email || "No email"}</p>
-            </div>
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-colors border border-error/20"
-          >
-            <LogOutIcon className="h-4 w-4" />
-            Log Out
-          </button>
-        </div>
-      )}
-
-      {/* User profile — collapsed avatar + logout */}
-      {collapsed && (
-        <div className="p-2 border-t border-border flex flex-col items-center gap-2">
-          <Link href="/app/profile" className="w-10 h-10 rounded-full  text-white flex items-center justify-center text-sm font-bold overflow-hidden">
-            {authUser?.avatarUrl ? (
-              <img src={authUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              initials
-            )}
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="p-2 rounded-lg text-error hover:bg-error/10 transition-colors"
-            title="Log out"
-          >
-            <LogOutIcon className="h-4 w-4" />
-          </button>
-        </div>
-      )}
+      
     </aside>
   );
 }

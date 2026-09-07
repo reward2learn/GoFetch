@@ -13,6 +13,9 @@ export interface UIState {
   }>;
   searchQuery: string;
   notificationDrawerOpen: boolean;
+  /** Timestamp (ms) of when the user last opened the notification drawer.
+   *  Used to compute the unread badge count on the bell icon. */
+  lastSeenNotificationTimestamp: number;
 }
 
 const initialState: UIState = {
@@ -23,6 +26,7 @@ const initialState: UIState = {
   notifications: [],
   searchQuery: "",
   notificationDrawerOpen: false,
+  lastSeenNotificationTimestamp: 0,
 };
 
 const uiSlice = createSlice({
@@ -69,6 +73,9 @@ const uiSlice = createSlice({
     setSearchQuery: (state, action: PayloadAction<string>) => {
       state.searchQuery = action.payload;
     },
+    markNotificationsAsSeen: (state) => {
+      state.lastSeenNotificationTimestamp = Date.now();
+    },
     openNotificationDrawer: (state) => {
       state.notificationDrawerOpen = true;
     },
@@ -90,6 +97,7 @@ export const {
   setSearchQuery,
   openNotificationDrawer,
   closeNotificationDrawer,
+  markNotificationsAsSeen,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

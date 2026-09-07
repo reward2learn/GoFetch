@@ -2,37 +2,15 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { COUNTRIES } from "@/lib/data/airports";
 import { AIRPORTS } from "@/lib/data/airports";
 import { RequestCard } from "@/components/marketplace/RequestCard";
 import { Modal } from "@/components/ui/Modal";
-
-function getStatusColor(status: string): { label: string; color: string } {
-  switch (status) {
-    case "completed": return { label: "✓ Completed", color: "green" };
-    case "in_transit":
-    case "traveling": return { label: "✈ Traveling", color: "green" };
-    case "purchased": return { label: "✈ Purchased", color: "green" };
-    case "cancelled": return { label: "Cancelled", color: "red" };
-    case "offer_sent": return { label: "Offer sent", color: "orange" };
-    case "pending": return { label: "Pending", color: "orange" };
-    case "open": return { label: "Open", color: "blue" };
-    default: return { label: status?.replace(/_/g, " ") || "Unknown", color: "gray" };
-  }
-}
-
-function getStatusClasses(color: string): string {
-  const map: Record<string, string> = {
-    green: "bg-success text-success",
-    red: "bg-error text-error",
-    orange: "bg-warning text-warning",
-    blue: "bg-info text-info",
-    gray: "bg-surface-2 text-muted",
-  };
-  return map[color] || map.gray;
-}
+import { fetchOrders, createOrder, updateRequest, deleteRequest } from "@/redux/slices/orders.slice";
+import { scrapeRequest } from "@/redux/slices/explore.slice";
+import { selectOrdersItems, selectOrdersIsLoading, selectOrdersError } from "@/redux/selectors";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 
 // Get unique cities for a country
 function getCitiesForCountry(country: string): string[] {
@@ -44,12 +22,15 @@ function getCitiesForCountry(country: string): string[] {
 
 export default function OrdersPage() {
   const router = useRouter();
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const rawOrders = useAppSelector(selectOrdersItems);
+  const orders = Array.isArray(rawOrders) ? rawOrders : [];
+  const isLoading = useAppSelector(selectOrdersIsLoading);
+  const error = useAppSelector(selectOrdersError);
   const [tab, setTab] = useState<"all" | "requests" | "deliveries">("all");
 
-  // Favorites (localStorage)
-  const [favorites, setFavorites] = useState<Set<string>>(() => {
+  // Favorites (localStorage only, no state)
+  const getFavorites = (): Set<string> => {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("gf-favorites");
@@ -57,11 +38,7 @@ export default function OrdersPage() {
       } catch { return new Set(); }
     }
     return new Set();
-  });
-
-  // Dropdown menu
-  const [activeMenu, setActiveMenu] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  };
 
   // Edit modal
   const [editingRequest, setEditingRequest] = useState<any>(null);
@@ -69,7 +46,8 @@ export default function OrdersPage() {
     title: "",
     description: "",
     category: "Other",
-    imageUrl: "",
+    imageUrls: [] as string[],
+    imageUrlDraft: "", // single-text field where the user pastes a URL and clicks "Add"
     productUrl: "",
     deliveryType: "standard" as "standard" | "click_and_collect",
     itemPrice: "",
@@ -83,6 +61,7 @@ export default function OrdersPage() {
   });
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
+  const [reScraping, setReScraping] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Delete confirmation
@@ -97,62 +76,8 @@ export default function OrdersPage() {
 
   // Fetch orders
   useEffect(() => {
-    const controller = new AbortController();
-    let ignore = false;
-
-    const fetchOrders = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/orders", { signal: controller.signal });
-        if (!res.ok) { if (!ignore) setOrders([]); return; }
-        const data = await res.json();
-        if (!ignore) setOrders(Array.isArray(data.orders) ? data.orders : Array.isArray(data) ? data : []);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        if (!ignore) setOrders([]);
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    };
-
-    fetchOrders();
-    return () => { ignore = true; controller.abort(); };
-  }, []);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setActiveMenu(null);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  // Save favorites to localStorage
-  const toggleFavorite = useCallback((id: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      localStorage.setItem("gf-favorites", JSON.stringify(Array.from(next)));
-      return next;
-    });
-  }, []);
-
-  // Share request link
-  const shareRequest = useCallback((id: string) => {
-    const url = `${window.location.origin}/app/requests/${id}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setToast({ message: "Link copied to clipboard!", type: "success" });
-      setTimeout(() => setToast(null), 3000);
-    }).catch(() => {
-      setToast({ message: "Failed to copy link", type: "error" });
-      setTimeout(() => setToast(null), 3000);
-    });
-    setActiveMenu(null);
-  }, []);
+    dispatch(fetchOrders());
+  }, [dispatch]);
 
   // Open edit modal
   const openEdit = useCallback((order: any) => {
@@ -162,7 +87,8 @@ export default function OrdersPage() {
       title: req.title || "",
       description: req.description || "",
       category: req.category || "Other",
-      imageUrl: req.imageUrl || "",
+      imageUrls: Array.isArray(req.imageUrls) ? req.imageUrls : (req.imageUrls ? [req.imageUrls] : []),
+      imageUrlDraft: "",
       productUrl: req.productUrl || "",
       deliveryType: req.deliveryType || "standard",
       itemPrice: String(req.itemPrice || order.itemPrice || ""),
@@ -175,7 +101,6 @@ export default function OrdersPage() {
       toCity: req.toCity || "",
     });
     setEditError("");
-    setActiveMenu(null);
   }, []);
 
   // Save edit
@@ -184,14 +109,13 @@ export default function OrdersPage() {
     setSaving(true);
     setEditError("");
     try {
-      const res = await fetch(`/api/requests/${editingRequest.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await dispatch(updateRequest({
+        id: editingRequest.id,
+        data: {
           title: editForm.title,
           description: editForm.description,
           category: editForm.category,
-          imageUrl: editForm.imageUrl,
+          imageUrls: editForm.imageUrls,
           productUrl: editForm.productUrl,
           deliveryType: editForm.deliveryType,
           itemPrice: parseFloat(editForm.itemPrice) || 0,
@@ -202,36 +126,8 @@ export default function OrdersPage() {
           fromCity: editForm.fromCity,
           toCountry: editForm.toCountry,
           toCity: editForm.toCity,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to update");
-      }
-      setOrders((prev) =>
-        prev.map((o) => {
-          if (o.id === editingRequest.id) {
-            return {
-              ...o,
-              request: {
-                ...o.request,
-                title: editForm.title,
-                description: editForm.description,
-                category: editForm.category,
-                imageUrl: editForm.imageUrl,
-                deliveryType: editForm.deliveryType,
-                fromCountry: editForm.fromCountry,
-                fromCity: editForm.fromCity,
-                toCountry: editForm.toCountry,
-                toCity: editForm.toCity,
-              },
-              itemPrice: editForm.itemPrice,
-              reward: editForm.reward,
-            };
-          }
-          return o;
-        })
-      );
+        },
+      })).unwrap();
       setEditingRequest(null);
       setToast({ message: "Request updated successfully!", type: "success" });
       setTimeout(() => setToast(null), 3000);
@@ -246,9 +142,7 @@ export default function OrdersPage() {
   const handleDelete = async (id: string) => {
     setDeleting(true);
     try {
-      const res = await fetch(`/api/requests/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-      setOrders((prev) => prev.filter((o) => o.id !== id));
+      await dispatch(deleteRequest(id)).unwrap();
       setDeletingId(null);
       setToast({ message: "Request deleted", type: "success" });
       setTimeout(() => setToast(null), 3000);
@@ -260,37 +154,99 @@ export default function OrdersPage() {
     }
   };
 
-  // Handle image upload (base64)
+  // Handle image upload (base64) — appends to the edit-form imageUrls array.
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      setEditError("Image must be under 5MB");
+      alert("Image must be under 5MB");
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
-      setEditForm((prev) => ({ ...prev, imageUrl: reader.result as string }));
+      const dataUrl = reader.result as string;
+      setEditForm((prev) => ({
+        ...prev,
+        imageUrls: prev.imageUrls.includes(dataUrl)
+          ? prev.imageUrls
+          : [...prev.imageUrls, dataUrl],
+      }));
     };
     reader.readAsDataURL(file);
   };
 
-  const filtered = orders.filter((o: any) => {
+  const filtered = (orders || []).filter((o: any) => {
     if (tab === "requests") return o.role === "buyer";
     if (tab === "deliveries") return o.role === "traveler";
     return true;
-  }).filter((o) => !lovedFilter || favorites.has(o.id));
+  }).filter((o: any) => !lovedFilter || getFavorites().has(o.id));
 
   // Computed cities for edit form
   const fromCities = editForm.fromCountry ? getCitiesForCountry(editForm.fromCountry) : [];
   const toCities = editForm.toCountry ? getCitiesForCountry(editForm.toCountry) : [];
 
-  return (
-    <div className="p-4 space-y-4">
-      <h1 className="text-2xl font-bold">My Orders</h1>
+  /**
+   * Re-scrape the product URL to repopulate title/description/category/price
+   * and (most importantly) the full array of product images. Existing
+   * manually-added image URLs are preserved.
+   */
+  const handleReScrape = async () => {
+    const url = editForm.productUrl.trim();
+    if (!url || !url.startsWith("http")) {
+      alert("Please enter a valid product URL first.");
+      return;
+    }
+    setReScraping(true);
+    try {
+      const data = await dispatch(scrapeRequest({ url })).unwrap();
+      setEditForm((prev) => ({
+        ...prev,
+        title: data.title ?? prev.title,
+        description: data.description ?? prev.description,
+        category: data.category ?? prev.category,
+        // Merge: keep any existing images the user uploaded, then prepend the
+        // newly scraped images so the user can see them first.
+        imageUrls: [
+          ...(Array.isArray(data.imageUrls) ? data.imageUrls : []),
+          ...prev.imageUrls,
+        ],
+      }));
+    } catch (err) {
+      console.error("Re-scrape failed:", err);
+      alert("Re-scrape failed. Please try again.");
+    } finally {
+      setReScraping(false);
+    }
+  };
 
-      {/* Pill tabs */}
-      <div className="flex gap-2">
+  const handleAddImageUrl = () => {
+    const url = editForm.imageUrlDraft.trim();
+    if (!url) return;
+    if (!/^https?:\/\//.test(url)) {
+      alert("Image URL must start with http:// or https://");
+      return;
+    }
+    setEditForm((prev) => ({
+      ...prev,
+      imageUrls: prev.imageUrls.includes(url) ? prev.imageUrls : [...prev.imageUrls, url],
+      imageUrlDraft: "",
+    }));
+  };
+
+  const handleRemoveImage = (url: string) => {
+    setEditForm((prev) => ({
+      ...prev,
+      imageUrls: prev.imageUrls.filter((u) => u !== url),
+    }));
+  };
+
+  {/* Edit Modal */}
+  return (
+    <div className="p-0 space-y-0">
+      {/* Sticky header: sub-tabs only */}
+      <div className="sticky top-0 z-20 bg-surface-1 p-4 border-b border-border">
+        {/* Pill tabs */}
+        <div className="flex gap-2 flex-wrap">
         {(["all", "requests", "deliveries"] as const).map((t) => (
           <button
             key={t}
@@ -314,14 +270,17 @@ export default function OrdersPage() {
         >
           ♥ Loved
         </button>
+        </div>
       </div>
 
+      {/* Content area with padding */}
+      <div className="p-4 space-y-4">
       {/* Order grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div key={i} className="animate-pulse bg-surface-1 rounded-xl overflow-hidden">
-              <div className="h-44 bg-surface-3" />
+              <div className="h-80 bg-surface-3" />
               <div className="p-3 space-y-2">
                 <div className="h-4 bg-surface-3 rounded w-2/3" />
                 <div className="h-3 bg-surface-3 rounded w-1/2" />
@@ -341,261 +300,48 @@ export default function OrdersPage() {
           <p className="text-sm text-muted">Post a request as a buyer, or accept one as a traveller, to start an escrow-protected order.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map((order: any) => {
             const isOwner = order.type === "request" && order.role === "buyer";
             const detailUrl = order.role === "traveler"
               ? `/app/deliveries/${order.id}`
               : `/app/requests/${order.id}`;
 
-            // For request-type items (buyer's own requests), use RequestCard directly
-            if (isOwner && order.type === "request") {
-              // Merge order-level fields into a request-shaped object for RequestCard
-              const reqData = {
-                id: order.id,
-                title: order.request?.title || order.title || `Order #${order.id.slice(0, 8)}`,
-                category: order.request?.category || order.category || "Other",
-                imageUrl: order.request?.imageUrl || order.imageUrl,
-                itemPrice: parseFloat(order.itemPrice || order.request?.itemPrice || "0"),
-                reward: parseFloat(order.reward || order.request?.reward || "0"),
-                fromCity: order.request?.fromCity || order.fromCity,
-                fromCountry: order.request?.fromCountry || order.fromCountry,
-                toCity: order.request?.toCity || order.toCity,
-                toCountry: order.request?.toCountry || order.toCountry,
-                status: order.status || order.request?.status || "open",
-                deliveryType: order.request?.deliveryType || order.deliveryType,
-              };
-
-              const statusInfo = getStatusColor(order.status);
-              const isFavorited = favorites.has(order.id);
-
-              return (
-                <div key={order.id} className="relative group">
-                  <RequestCard request={reqData} />
-
-                  {/* Overlay actions on hover */}
-                  <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    {/* Heart / Favorite */}
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(order.id); }}
-                      className={`p-1.5 rounded-full backdrop-blur-sm transition-colors ${
-                        isFavorited
-                          ? "bg-error text-white"
-                          : "bg-black/50 text-white hover:bg-error"
-                      }`}
-                      aria-label="Favorite"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill={isFavorited ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
-                      </svg>
-                    </button>
-                    {/* Share */}
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); shareRequest(order.id); }}
-                      className="p-1.5 rounded-full bg-black/50 text-white hover:bg-primary backdrop-blur-sm transition-colors"
-                      aria-label="Share"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                        <line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>
-                      </svg>
-                    </button>
-                    {/* More menu */}
-                    <div className="relative" ref={activeMenu === order.id ? menuRef : undefined}>
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveMenu(activeMenu === order.id ? null : order.id); }}
-                        className="p-1.5 rounded-full bg-black/50 text-white hover:bg-surface-hover-strong backdrop-blur-sm transition-colors"
-                        aria-label="More options"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
-                        </svg>
-                      </button>
-                      {activeMenu === order.id && (
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-surface-1 border border-border rounded-xl shadow-lg z-50 overflow-hidden">
-                          <button
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(detailUrl); setActiveMenu(null); }}
-                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-surface-hover transition-colors text-left"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-                            </svg>
-                            View Details
-                          </button>
-                          <button
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); openEdit(order); }}
-                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-surface-hover transition-colors text-left"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>
-                            </svg>
-                            Edit Request
-                          </button>
-                          <button
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeletingId(order.id); setActiveMenu(null); }}
-                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-error hover:bg-error transition-colors text-left"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                            </svg>
-                            Delete Request
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Status chip overlay */}
-                  {order.status !== "open" && (
-                    <div className="absolute bottom-3 left-3 z-10">
-                      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${getStatusClasses(getStatusColor(order.status).color)}`}>
-                        {getStatusColor(order.status).label}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            // For order-type items (traveler's deliveries), create matching card
-            const img = order.imageUrl || order.request?.imageUrl;
-            const statusInfo = getStatusColor(order.status);
-            const title = order.request?.title || `Order #${order.id.slice(0, 8)}`;
-            const fromCity = order.request?.fromCity || order.fromCity;
-            const fromCountry = order.request?.fromCountry || order.fromCountry;
-            const toCity = order.request?.toCity || order.toCity;
-            const toCountry = order.request?.toCountry || order.toCountry;
-            const category = order.request?.category || "Other";
-            const deliveryType = order.request?.deliveryType || order.deliveryType;
-            const price = parseFloat(order.itemPrice || "0");
-            const reward = parseFloat(order.reward || "0");
-            const isFavorited = favorites.has(order.id);
-            const pickupLocation = order.request?.pickupLocation;
+            // Unified RequestCard for both buyer requests and traveler deliveries
+            const reqData = {
+              id: order.id,
+              title: order.request?.title || order.title || `Order #${order.id.slice(0, 8)}`,
+              category: order.request?.category || order.category || "Other",
+              outletName: order.request?.outletName,
+              imageUrls: order.request?.imageUrls || order.imageUrls,
+              itemPrice: parseFloat(order.itemPrice || order.request?.itemPrice || "0"),
+              reward: parseFloat(order.reward || order.request?.reward || "0"),
+              fromCity: order.request?.fromCity || order.fromCity,
+              fromCountry: order.request?.fromCountry || order.fromCountry,
+              toCity: order.request?.toCity || order.toCity,
+              toCountry: order.request?.toCountry || order.toCountry,
+              status: order.status || order.request?.status || "open",
+              deliveryType: order.request?.deliveryType || order.deliveryType,
+              deadline: order.request?.deadline || null,
+            };
 
             return (
-              <div key={order.id} className="relative group">
-                <Link href={detailUrl}>
-                  <div className="bg-surface-1 rounded-xl border border-border overflow-hidden cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col">
-                    {/* Image */}
-                    <div className="relative h-44 -mx-0 -mt-0 mb-0 overflow-hidden">
-                      <img
-                        src={img || `https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=600&h=400&fit=crop`}
-                        alt={title}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                      {/* Category badge */}
-                      <span className="absolute top-3 left-3 text-xs font-medium px-2 py-1 bg-black/50 backdrop-blur-sm rounded-full text-white shadow-sm">
-                        {category}
-                      </span>
-
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex flex-col p-3">
-                      <h3 className="font-semibold text-lg mb-2 line-clamp-2">{title}</h3>
-
-                      {/* Route */}
-                      <div className="space-y-1 text-sm">
-                        <p className="flex items-center gap-1">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                            <circle cx="12" cy="10" r="3"/>
-                          </svg>
-                          {fromCity && fromCountry
-                            ? `${fromCity}, ${fromCountry}`
-                            : "Origin TBD"}
-                          {" → "}
-                          {toCity && toCountry
-                            ? `${toCity}, ${toCountry}`
-                            : "Destination TBD"}
-                        </p>
-                      </div>
-
-                      {/* Price section - reward primary */}
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-xs text-muted">Delivery Reward</p>
-                            <p className="font-bold text-lg text-primary-color">+{formatCurrency(reward)}</p>
-                          </div>
-                          {price > 0 && (
-                            <div className="text-right">
-                              <p className="text-xs text-muted">Item Price</p>
-                              <p className="text-sm text-muted">{formatCurrency(price)}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Footer */}
-                      <div className="mt-auto pt-3 border-t border-border flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {/* Heart */}
-                          <button
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(order.id); }}
-                            className={`p-1 transition-colors ${isFavorited ? "text-error" : "text-muted hover:text-error"}`}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={isFavorited ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
-                            </svg>
-                          </button>
-                          {/* Share */}
-                          <button
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); shareRequest(order.id); }}
-                            className="p-1 text-muted hover:text-primary-color transition-colors"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                              <line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>
-                            </svg>
-                          </button>
-                        </div>
-                        {/* Status chip */}
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getStatusClasses(statusInfo.color)}`}>
-                          {statusInfo.label}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-
-                {/* Overlay actions on hover */}
-                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  <div className="relative" ref={activeMenu === order.id ? menuRef : undefined}>
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveMenu(activeMenu === order.id ? null : order.id); }}
-                      className="p-1.5 rounded-full bg-black/50 text-white hover:bg-surface-hover-strong backdrop-blur-sm transition-colors"
-                      aria-label="More options"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
-                      </svg>
-                    </button>
-                    {activeMenu === order.id && (
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-surface-1 border border-border rounded-xl shadow-lg z-50 overflow-hidden">
-                        <button
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(detailUrl); setActiveMenu(null); }}
-                          className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-surface-hover transition-colors text-left"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-                          </svg>
-                          View Details
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <RequestCard
+                key={order.id}
+                request={reqData}
+                href={detailUrl}
+                onEdit={isOwner ? (req) => openEdit({ ...order, request: req }) : undefined}
+                onDelete={isOwner ? (id) => setDeletingId(id) : undefined}
+              />
             );
           })}
         </div>
       )}
+      </div>
 
       {/* Delivery total footer */}
       {tab === "deliveries" && filtered.length > 0 && (
-        <div className="mt-6 p-4 bg-surface-1 border border-border rounded-xl">
+        <div className="mt-0 p-4 bg-surface-1 border-y border-border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted">Total Active Delivery Rewards</p>
@@ -614,7 +360,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Edit Modal */}
+
       <Modal
         isOpen={!!editingRequest}
         onClose={() => setEditingRequest(null)}
@@ -630,7 +376,7 @@ export default function OrdersPage() {
           </>
         }
       >
-        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+        <div >
           {/* Product URL */}
           <div>
             <label className="block text-sm font-medium mb-1">Product URL</label>
@@ -644,15 +390,20 @@ export default function OrdersPage() {
           </div>
 
           {/* Image */}
+          {/* Product Images — multi-image gallery with upload + URL paste + remove */}
           <div>
-            <label className="block text-sm font-medium mb-1">Product Image</label>
-            <div className="flex gap-2">
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium">Product Images</label>
+              <span className="text-xs text-muted">{editForm.imageUrls.length} attached</span>
+            </div>
+
+            <div className="flex gap-2 mb-2">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm text-secondary hover:bg-surface-hover transition-colors"
               >
-                📷 Upload
+                📷 Upload Image
               </button>
               <input
                 ref={fileInputRef}
@@ -663,24 +414,76 @@ export default function OrdersPage() {
               />
               <input
                 type="text"
-                value={editForm.imageUrl}
-                onChange={(e) => setEditForm((p) => ({ ...p, imageUrl: e.target.value }))}
-                placeholder="Or paste image URL"
+                value={editForm.imageUrlDraft}
+                onChange={(e) => setEditForm((p) => ({ ...p, imageUrlDraft: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddImageUrl(); } }}
+                placeholder="Or paste image URL and press Enter"
                 className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
+              <button
+                type="button"
+                onClick={handleAddImageUrl}
+                disabled={!editForm.imageUrlDraft.trim()}
+                className="px-3 py-2 bg-surface-2 border border-border rounded-lg text-sm hover:bg-surface-hover disabled:opacity-50 transition-colors"
+              >
+                Add
+              </button>
             </div>
-            {editForm.imageUrl && (
-              <div className="mt-2 relative inline-block">
-                <img src={editForm.imageUrl} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-border" />
-                <button
-                  type="button"
-                  onClick={() => setEditForm((p) => ({ ...p, imageUrl: "" }))}
-                  className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
-                >
-                  ✕
-                </button>
+
+            {editForm.imageUrls.length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-2">
+                {editForm.imageUrls.map((url, idx) => (
+                  <div key={url + idx} className="relative group aspect-square">
+                    <img
+                      src={url}
+                      alt={`Product image ${idx + 1}`}
+                      className="w-full h-full object-cover rounded-lg border border-border bg-surface-2"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditForm((p) => ({ ...p, imageUrls: p.imageUrls.filter((u) => u !== url) }))}
+                      aria-label={`Remove image ${idx + 1}`}
+                      className="absolute -top-2 -right-2 h-5 w-5 bg-error text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ✕
+                    </button>
+                    {idx === 0 && (
+                      <span className="absolute top-1 left-1 text-[10px] font-semibold px-1.5 py-0.5 bg-primary text-white rounded">Primary</span>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
+          </div>
+
+          {/* Re-generate from product URL — re-runs the scrape to repopulate title/images/price */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Re-generate from URL</label>
+            <button
+              type="button"
+              onClick={handleReScrape}
+              disabled={!editForm.productUrl.trim() || reScraping}
+              className="w-full px-3 py-2 bg-primary/10 border border-primary/30 rounded-lg text-sm text-primary hover:bg-primary/20 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+            >
+              {reScraping ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Re-scraping…
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12a9 9 0 11-9-9c2.39 0 4.68.94 6.36 2.64L21 8"/>
+                    <path d="M21 3v5h-5"/>
+                  </svg>
+                  Re-generate from URL
+                </>
+              )}
+            </button>
+            <p className="text-xs text-muted mt-1">Fetches the latest title, description, price, and images from the product URL. Existing images are preserved.</p>
           </div>
 
           {/* Title */}

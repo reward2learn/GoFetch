@@ -284,7 +284,7 @@ export default function OrderDetail() {
         onShowQR={() => router.push(`/qr/${id}`)}
         onScan={() => router.push(`/scan/${id}`)}
         onConfirm={() => act("confirm", undefined, "confirm")}
-        onRespond={(action) => act("respond", { action }, "respond")}
+        onRespond={(action: string) => act("respond", { action }, "respond")}
         onReview={() => router.push(`/review/${id}`)}
       />
 

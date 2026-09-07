@@ -76,7 +76,7 @@ export async function validateSiweMessage(
       return { valid: false, error: "Invalid version in SIWE message" };
     }
 
-    if (fields["Chain ID"] !== "11155111") {
+    if (fields["Chain ID"] !== process.env.NEXT_PUBLIC_CHAIN_ID) {
       return { valid: false, error: "Invalid chain ID in SIWE message" };
     }
 

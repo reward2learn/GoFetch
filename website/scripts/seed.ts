@@ -3,18 +3,18 @@ import { PrismaClient } from "../src/generated/prisma";
 const prisma = new PrismaClient();
 
 const IMAGES = {
-  skincare: "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=600&h=400&fit=crop",
-  perfume: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=600&h=400&fit=crop",
-  makeup: "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=600&h=400&fit=crop",
-  headphones: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&h=400&fit=crop",
-  camera: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=600&h=400&fit=crop",
-  phone: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&h=400&fit=crop",
-  sneakers: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&h=400&fit=crop",
-  bag: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&h=400&fit=crop",
-  watch: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=600&h=400&fit=crop",
-  tea: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600&h=400&fit=crop",
-  chocolate: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=600&h=400&fit=crop",
-  wine: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=600&h=400&fit=crop",
+  skincare: "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?auto=format&fit=crop&w=600&h=400&q=80",
+  perfume: "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=600&h=400&q=80",
+  makeup: "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=600&h=400&q=80",
+  headphones: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&h=400&q=80",
+  camera: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=600&h=400&q=80",
+  phone: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=600&h=400&q=80",
+  sneakers: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&h=400&q=80",
+  bag: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=600&h=400&q=80",
+  watch: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=600&h=400&q=80",
+  tea: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=600&h=400&q=80",
+  chocolate: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?auto=format&fit=crop&w=600&h=400&q=80",
+  wine: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=600&h=400&q=80",
 };
 
 async function main() {
@@ -151,7 +151,7 @@ async function main() {
         description:
           "Looking for SK-II facial treatment essence (230ml) from Don Quijote in Shibuya. Will pay item price + reward for safe delivery.",
         category: "Beauty",
-        imageUrl: IMAGES.skincare,
+        imageUrls: [IMAGES.skincare],
         fromCity: "Tokyo",
         fromCountry: "Japan",
         toCity: "Bali",
@@ -168,7 +168,7 @@ async function main() {
         description:
           "Need Apple AirPods Pro 2nd gen from Apple Store Orchard Road. Original packaging please.",
         category: "Electronics",
-        imageUrl: IMAGES.headphones,
+        imageUrls: [IMAGES.headphones],
         fromCity: "Singapore",
         fromCountry: "Singapore",
         toCity: "Jakarta",
@@ -185,7 +185,7 @@ async function main() {
         description:
           "Looking for Gucci GG0018S sunglasses from a boutique in Milan. Any colorway accepted.",
         category: "Fashion",
-        imageUrl: IMAGES.watch,
+        imageUrls: [IMAGES.watch],
         fromCity: "Milan",
         fromCountry: "Italy",
         toCity: "Bali",
@@ -202,7 +202,7 @@ async function main() {
         description:
           "Want 5 boxes of Kyoto-exclusive matcha Kit-Kats. Happy to pay extra for careful packaging.",
         category: "Food",
-        imageUrl: IMAGES.chocolate,
+        imageUrls: [IMAGES.chocolate],
         fromCity: "Kyoto",
         fromCountry: "Japan",
         toCity: "Bali",
@@ -219,7 +219,7 @@ async function main() {
         description:
           "Sony A7IV mirrorless camera body only. Need it shipped from B&H Photo in New York.",
         category: "Electronics",
-        imageUrl: IMAGES.camera,
+        imageUrls: [IMAGES.camera],
         fromCity: "New York",
         fromCountry: "United States",
         toCity: "Bali",
@@ -236,7 +236,7 @@ async function main() {
         description:
           "Nike Air Max 90 'Infrared' size 10 from Nike Store Oxford Street.",
         category: "Fashion",
-        imageUrl: IMAGES.sneakers,
+        imageUrls: [IMAGES.sneakers],
         fromCity: "London",
         fromCountry: "United Kingdom",
         toCity: "Jakarta",
@@ -253,7 +253,7 @@ async function main() {
         description:
           "Chanel No. 5 Eau de Parfum 100ml from Galeries Lafayette.",
         category: "Beauty",
-        imageUrl: IMAGES.perfume,
+        imageUrls: [IMAGES.perfume],
         fromCity: "Paris",
         fromCountry: "France",
         toCity: "Bali",
@@ -270,7 +270,7 @@ async function main() {
         description:
           "ChaTraMue brand Thai tea concentrate, 3 bottles. From their flagship store.",
         category: "Food",
-        imageUrl: IMAGES.tea,
+        imageUrls: [IMAGES.tea],
         fromCity: "Bangkok",
         fromCountry: "Thailand",
         toCity: "Bali",
@@ -287,7 +287,7 @@ async function main() {
         description:
           "Le Labo Santal 33 fragrance 100ml from Dubai Mall.",
         category: "Beauty",
-        imageUrl: IMAGES.perfume,
+        imageUrls: [IMAGES.perfume],
         fromCity: "Dubai",
         fromCountry: "UAE",
         toCity: "Bali",
@@ -304,7 +304,7 @@ async function main() {
         description:
           "MacBook Air 15-inch M3 16GB from Apple Store Sydney. Need receipt for warranty.",
         category: "Electronics",
-        imageUrl: IMAGES.phone,
+        imageUrls: [IMAGES.phone],
         fromCity: "Sydney",
         fromCountry: "Australia",
         toCity: "Jakarta",
@@ -321,7 +321,7 @@ async function main() {
         description:
           "Longchamp Le Pliage Large tote in navy blue. From their Rue de Rivoli store.",
         category: "Fashion",
-        imageUrl: IMAGES.bag,
+        imageUrls: [IMAGES.bag],
         fromCity: "Paris",
         fromCountry: "France",
         toCity: "Bali",
@@ -338,7 +338,7 @@ async function main() {
         description:
           "Innisfree, COSRX, and Laneige products from Myeongdong. Will provide exact product list.",
         category: "Beauty",
-        imageUrl: IMAGES.makeup,
+        imageUrls: [IMAGES.makeup],
         fromCity: "Seoul",
         fromCountry: "South Korea",
         toCity: "Bali",
@@ -356,7 +356,7 @@ async function main() {
         description:
           "Already purchased iPhone 17 Pro Max 256GB from Heinemann Duty Free online. Just need someone to collect from the Departures shop and deliver to Bali.",
         category: "Electronics",
-        imageUrl: IMAGES.phone,
+        imageUrls: [IMAGES.phone],
         deliveryType: "click_and_collect",
         pickupLocation:
           "Heinemann Departures Shop, Sydney Airport — Pick Up counter immediately after Security Screening, far right next to Travel Accessories",
@@ -379,7 +379,7 @@ async function main() {
         description:
           "Purchased Chanel No. 5 EDP 100ml from Heinemann Arrivals. Need pickup from Gold Coast Airport and delivery to Sydney.",
         category: "Beauty",
-        imageUrl: IMAGES.perfume,
+        imageUrls: [IMAGES.perfume],
         deliveryType: "click_and_collect",
         pickupLocation:
           "Heinemann Arrivals Shop, Gold Coast Airport — Pick Up counter at Cashier",

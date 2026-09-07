@@ -169,6 +169,9 @@ model Request {
   category      String?
   imageUrls     String[]        @default([]) @map("image_urls")
   productUrl    String?         @map("product_url")
+  outletName    String?         @map("outlet_name")
+  invoiceUrl    String?         @map("invoice_url")
+  archiveReason String?         @map("archive_reason")
 
   // Delivery type
   deliveryType     DeliveryType  @default(standard) @map("delivery_type")
@@ -238,6 +241,7 @@ model Order {
   timeline        Json          @default("[]")
 
   createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt() @map("updated_at")
 
   // Relations
   request         Request       @relation(fields: [requestId], references: [id])

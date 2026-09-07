@@ -252,14 +252,32 @@ export default function ProfilePage() {
     }
   };
 
-  /** Mark the KYC review as submitted. In a production deployment this would call
-   *  an API like POST /api/kyc/submit that triggers a backend review queue. */
+  /** Submit KYC for automatic server-side verification. The server validates
+   *  that all required fields are present and auto-approves if the data matches
+   *  the uploaded passport image. */
   const handleSubmitKyc = async () => {
     setSubmittingKyc(true);
     try {
-      // Simulate a quick server round-trip so the UI shows a loading state.
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setKycSubmitted(true);
+      const res = await fetch("/api/kyc/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setKycSubmitted(true);
+        // Refresh user state to reflect verified kycStatus
+        const profileRes = await fetch("/api/auth/me");
+        if (profileRes.ok) {
+          const profile = await profileRes.json();
+          setUserState(profile);
+        }
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to submit KYC");
+      }
+    } catch (err) {
+      console.error("KYC submission failed:", err);
+      alert("Network error. Please try again.");
     } finally {
       setSubmittingKyc(false);
     }
@@ -875,6 +893,18 @@ export default function ProfilePage() {
                             Re-upload
                           </button>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Show uploaded passport image when available */}
+                    {user?.passportImageUrl && (
+                      <div className="mt-2">
+                        <p className="text-[10px] text-muted mb-1">Uploaded document:</p>
+                        <img
+                          src={user.passportImageUrl}
+                          alt="Passport"
+                          className="w-full max-h-40 object-cover rounded-lg border border-border"
+                        />
                       </div>
                     )}
                   </div>

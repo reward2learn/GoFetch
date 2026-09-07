@@ -47,3 +47,20 @@ export async function getSession(): Promise<UserPayload | null> {
 
   return null;
 }
+
+import prisma from "@/db";
+
+/** Check if a wallet address is blacklisted. Returns true if the user
+ *  is blacklisted and should be denied access to the application. */
+export async function isBlacklistedUser(walletAddress: string | null | undefined): Promise<boolean> {
+  if (!walletAddress) return false;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { walletAddress: walletAddress.toLowerCase() },
+      select: { isBlacklisted: true },
+    });
+    return user?.isBlacklisted ?? false;
+  } catch {
+    return false;
+  }
+}

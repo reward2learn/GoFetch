@@ -39,7 +39,6 @@ enum RequestStatus {
   in_progress
   completed
   cancelled
-  archived
 }
 
 enum OrderStatus {
@@ -89,37 +88,46 @@ enum DeliveryType {
 
 /// User accounts — buyers, travelers, arbitrators, admins
 model User {
-  id                String         @id() @default(uuid()) @db.Uuid()
-  tenantSlug        String         @default("default") @map("tenant_slug")
-  email             String?        @unique()
-  name              String?
-  avatarUrl         String?        @map("avatar_url")
-  bio               String?
-  walletAddress     String         @unique() @map("wallet_address")
-  kycStatus         KycStatus      @default(none) @map("kyc_status")
-  role              UserRole       @default(buyer)
-  theme             String?        @default("system")
-  reputation        Decimal        @default(0) @db.Decimal(3, 2)
-  reviewsCount      Int            @default(0) @map("reviews_count")
-  ordersCompleted   Int            @default(0) @map("orders_completed")
-  tripsCompleted    Int            @default(0) @map("trips_completed")
-  usdcBalance       Decimal        @default(0) @map("usdc_balance") @db.Decimal(20, 6)
-  lockedBalance     Decimal        @default(0) @map("locked_balance") @db.Decimal(20, 6)
-  token             String         @unique()
-  acceptedTermsAt   DateTime?      @map("accepted_terms_at")
-  createdAt         DateTime       @default(now()) @map("created_at")
-  updatedAt         DateTime       @updatedAt() @map("updated_at")
-  requests          Request[]
-  buyerOrders       Order[]        @relation("BuyerOrders")
-  travelerOrders    Order[]        @relation("TravelerOrders")
-  travelPlans       TravelPlan[]
-  sentMessages      ChatMessage[]  @relation("SentMessages")
-  givenReviews      Review[]       @relation("GivenReviews")
-  receivedReviews   Review[]       @relation("ReceivedReviews")
-  initiatedDisputes Dispute[]      @relation("InitiatedDisputes")
-  resolvedDisputes  Dispute[]      @relation("ResolvedDisputes")
-  transactions      Transaction[]
-  notifications     Notification[]
+  id                   String         @id() @default(uuid()) @db.Uuid()
+  tenantSlug           String         @default("default") @map("tenant_slug")
+  email                String?        @unique()
+  name                 String?
+  avatarUrl            String?        @map("avatar_url")
+  passportImageUrl     String?        @map("passport_image_url")
+  passportFullName     String?        @map("passport_full_name")
+  passportDocumentNo   String?        @map("passport_document_no")
+  passportNationality  String?        @map("passport_nationality")
+  passportDateOfBirth  DateTime?      @map("passport_date_of_birth")
+  passportSex          String?        @map("passport_sex")
+  passportExpiryDate   DateTime?      @map("passport_expiry_date")
+  passportDateOfIssue  DateTime?      @map("passport_date_of_issue")
+  passportPlaceOfBirth String?        @map("passport_place_of_birth")
+  bio                  String?
+  walletAddress        String         @unique() @map("wallet_address")
+  kycStatus            KycStatus      @default(none) @map("kyc_status")
+  isBlacklisted        Boolean        @default(false) @map("is_blacklisted")
+  role                 UserRole       @default(buyer)
+  reputation           Decimal        @default(0) @db.Decimal(3, 2)
+  reviewsCount         Int            @default(0) @map("reviews_count")
+  ordersCompleted      Int            @default(0) @map("orders_completed")
+  tripsCompleted       Int            @default(0) @map("trips_completed")
+  usdcBalance          Decimal        @default(0) @map("usdc_balance") @db.Decimal(20, 6)
+  lockedBalance        Decimal        @default(0) @map("locked_balance") @db.Decimal(20, 6)
+  token                String         @unique()
+  acceptedTermsAt      DateTime?      @map("accepted_terms_at")
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt() @map("updated_at")
+  requests             Request[]
+  buyerOrders          Order[]        @relation("BuyerOrders")
+  travelerOrders       Order[]        @relation("TravelerOrders")
+  travelPlans          TravelPlan[]
+  sentMessages         ChatMessage[]  @relation("SentMessages")
+  givenReviews         Review[]       @relation("GivenReviews")
+  receivedReviews      Review[]       @relation("ReceivedReviews")
+  initiatedDisputes    Dispute[]      @relation("InitiatedDisputes")
+  resolvedDisputes     Dispute[]      @relation("ResolvedDisputes")
+  transactions         Transaction[]
+  notifications        Notification[]
 
   @@index([walletAddress])
   @@index([role])
@@ -135,10 +143,8 @@ model Request {
   title              String
   description        String?
   category           String?
-  outletName         String?        @map("outlet_name")
-  imageUrl           String?        @map("image_url")
+  imageUrls          String[]       @default([]) @map("image_urls")
   productUrl         String?        @map("product_url")
-  invoiceUrl         String?        @map("invoice_url")
   deliveryType       DeliveryType   @default(standard) @map("delivery_type")
   pickupLocation     String?        @map("pickup_location")
   pickupInstructions String?        @map("pickup_instructions")
@@ -151,7 +157,6 @@ model Request {
   toCity             String         @map("to_city")
   deadline           DateTime?
   status             RequestStatus  @default(open)
-  archiveReason      String?        @map("archive_reason")
   createdAt          DateTime       @default(now()) @map("created_at")
   deletedAt          DateTime?      @map("deleted_at")
   buyer              User           @relation(fields: [buyerId], references: [id])

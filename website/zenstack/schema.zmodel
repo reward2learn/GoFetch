@@ -107,9 +107,20 @@ model User {
   email           String?     @unique
   name            String?
   avatarUrl       String?     @map("avatar_url")
+  passportImageUrl String?    @map("passport_image_url")
+  // Extracted passport data (populated by /api/scan/passport OCR)
+  passportFullName     String?  @map("passport_full_name")
+  passportDocumentNo   String?  @map("passport_document_no")
+  passportNationality  String?  @map("passport_nationality")
+  passportDateOfBirth  DateTime? @map("passport_date_of_birth")
+  passportSex         String?  @map("passport_sex")
+  passportExpiryDate  DateTime? @map("passport_expiry_date")
+  passportDateOfIssue DateTime? @map("passport_date_of_issue")
+  passportPlaceOfBirth String? @map("passport_place_of_birth")
   bio             String?
   walletAddress   String      @unique @map("wallet_address")
   kycStatus       KycStatus   @default(none) @map("kyc_status")
+  isBlacklisted   Boolean     @default(false) @map("is_blacklisted")
   role            UserRole    @default(buyer)
 
   // Reputation & stats
@@ -156,7 +167,7 @@ model Request {
   title         String
   description   String?
   category      String?
-  imageUrl      String?         @map("image_url")
+  imageUrls     String[]        @default([]) @map("image_urls")
   productUrl    String?         @map("product_url")
 
   // Delivery type

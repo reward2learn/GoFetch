@@ -25,6 +25,7 @@ export default function ProfilePage() {
   const [passportScanProgress, setPassportScanProgress] = useState(0);
   const [passportData, setPassportData] = useState<{
     fullName: string;
+    documentType: string;
     documentNumber: string;
     nationality: string;
     dateOfBirth: string;
@@ -199,6 +200,7 @@ export default function ProfilePage() {
           const f = data?.fields || {};
           setPassportData({
             fullName: f.fullName || f.surname || "",
+            documentType: f.documentType || "P",
             documentNumber: f.documentNumber || "",
             nationality: f.nationality || "",
             dateOfBirth: f.dateOfBirth || "",
@@ -765,70 +767,96 @@ export default function ProfilePage() {
                     {passportData && (
                       <div className="mt-2 space-y-2">
                         <p className="text-xs text-muted">Review the extracted data and save if correct.</p>
-                        <input
-                          type="text"
-                          value={passportData.fullName}
-                          onChange={(e) => setPassportData({ ...passportData, fullName: e.target.value })}
-                          placeholder="Full name"
-                          className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
-                        <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] text-muted mb-0.5">Full Name</label>
                           <input
                             type="text"
-                            value={passportData.documentNumber}
-                            onChange={(e) => setPassportData({ ...passportData, documentNumber: e.target.value })}
-                            placeholder="Document #"
+                            value={passportData.fullName}
+                            onChange={(e) => setPassportData({ ...passportData, fullName: e.target.value })}
+                            placeholder="Full name"
                             className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                           />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] text-muted mb-0.5">Document No.</label>
+                            <input
+                              type="text"
+                              value={passportData.documentNumber ? passportData.documentType + " " + passportData.documentNumber : passportData.documentType}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const typePart = val.split(" ")[0] || "";
+                                const numPart = val.slice(typePart.length + 1) || "";
+                                setPassportData({ ...passportData, documentType: typePart, documentNumber: numPart });
+                              }}
+                              placeholder="P A8306393"
+                              className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-muted mb-0.5">Nationality</label>
+                            <input
+                              type="text"
+                              value={passportData.nationality}
+                              onChange={(e) => setPassportData({ ...passportData, nationality: e.target.value })}
+                              placeholder="AUS"
+                              className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] text-muted mb-0.5">Date of Birth</label>
+                            <input
+                              type="date"
+                              value={passportData.dateOfBirth}
+                              onChange={(e) => setPassportData({ ...passportData, dateOfBirth: e.target.value })}
+                              className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-muted mb-0.5">Sex</label>
+                            <select
+                              value={passportData.sex}
+                              onChange={(e) => setPassportData({ ...passportData, sex: e.target.value })}
+                              className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                            >
+                              <option value="">—</option>
+                              <option value="M">Male</option>
+                              <option value="F">Female</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] text-muted mb-0.5">Date of Issue</label>
+                            <input
+                              type="date"
+                              value={passportData.dateOfIssue}
+                              onChange={(e) => setPassportData({ ...passportData, dateOfIssue: e.target.value })}
+                              className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-muted mb-0.5">Expiry Date</label>
+                            <input
+                              type="date"
+                              value={passportData.expiryDate}
+                              onChange={(e) => setPassportData({ ...passportData, expiryDate: e.target.value })}
+                              className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-muted mb-0.5">Place of Birth</label>
                           <input
                             type="text"
-                            value={passportData.nationality}
-                            onChange={(e) => setPassportData({ ...passportData, nationality: e.target.value })}
-                            placeholder="Nationality"
+                            value={passportData.placeOfBirth}
+                            onChange={(e) => setPassportData({ ...passportData, placeOfBirth: e.target.value })}
+                            placeholder="YAROSLAVL"
                             className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                           />
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="date"
-                            value={passportData.dateOfBirth}
-                            onChange={(e) => setPassportData({ ...passportData, dateOfBirth: e.target.value })}
-                            placeholder="DOB"
-                            className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                          />
-                          <select
-                            value={passportData.sex}
-                            onChange={(e) => setPassportData({ ...passportData, sex: e.target.value })}
-                            className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                          >
-                            <option value="">Sex</option>
-                            <option value="M">Male</option>
-                            <option value="F">Female</option>
-                          </select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="date"
-                            value={passportData.dateOfIssue}
-                            onChange={(e) => setPassportData({ ...passportData, dateOfIssue: e.target.value })}
-                            placeholder="Issued"
-                            className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                          />
-                          <input
-                            type="date"
-                            value={passportData.expiryDate}
-                            onChange={(e) => setPassportData({ ...passportData, expiryDate: e.target.value })}
-                            placeholder="Expires"
-                            className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                          />
-                        </div>
-                        <input
-                          type="text"
-                          value={passportData.placeOfBirth}
-                          onChange={(e) => setPassportData({ ...passportData, placeOfBirth: e.target.value })}
-                          placeholder="Place of birth"
-                          className="w-full px-2 py-1.5 bg-surface-1 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
                         <div className="flex gap-2">
                           <button
                             type="button"

@@ -8,7 +8,7 @@ import { openNotificationDrawer, markNotificationsAsSeen } from "@/redux/slices/
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useLogout } from "@/lib/useLogout";
 import SearchDropdown from "@/components/search/SearchDropdown";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 interface AppNavbarProps {
   onSidebarToggle?: () => void;
@@ -26,8 +26,6 @@ export function AppNavbar({ onSidebarToggle, sidebarCollapsed, onMobileMenuToggl
     (s) => s.ui.lastSeenNotificationTimestamp
   );
   const handleLogout = useLogout();
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
   const [searchOpen, setSearchOpen] = useState(false);
 
   const unreadNotificationCount = useMemo(
@@ -38,19 +36,6 @@ export function AppNavbar({ onSidebarToggle, sidebarCollapsed, onMobileMenuToggl
   const openNotifications = () => {
     dispatch(openNotificationDrawer());
     dispatch(markNotificationsAsSeen());
-  };
-
-  const handleSearchIconClick = () => {
-    if (searchOpen) {
-      setSearchOpen(false);
-    } else {
-      setSearchOpen(true);
-      setTimeout(() => searchInputRef.current?.focus(), 50);
-    }
-  };
-
-  const handleSearchBlur = () => {
-    if (!searchInputRef.current?.value) setSearchOpen(false);
   };
 
   return (
@@ -130,34 +115,20 @@ export function AppNavbar({ onSidebarToggle, sidebarCollapsed, onMobileMenuToggl
           </button>
         )}
 
-        {/* Center: search icon expands to full-width field */}
+        {/* Center: search icon expands to show SearchDropdown */}
         <div className="flex-1 flex items-center justify-center">
           {searchOpen ? (
-            <div className="relative w-full max-w-xl">
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Search requests..."
-                onBlur={handleSearchBlur}
-                className="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-surface-2"
-              />
-              {/* Search dropdown below the input */}
-              <div className="absolute top-full left-0 right-0 mt-1 z-20">
-                <SearchDropdown />
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <button
-                onClick={handleSearchIconClick}
-                className="p-2 hover:bg-surface-tertiary rounded-lg transition-colors w-full max-w-xl"
-                title="Open search"
-              >
-                <SearchIcon className="h-5 w-5 text-muted" />
-              </button>
-            </div>
-          )}
+            <button
+              onClick={() => setSearchOpen(false)}
+              className="p-2 hover:bg-surface-tertiary rounded-lg transition-colors w-full"
+              title="Close search"
+            >
+              <SearchIcon className="h-5 w-5 text-muted" />
+            </button>
+          ) : null}
+          <div className="w-full max-w-xl">
+            <SearchDropdown />
+          </div>
         </div>
 
         {/* Right: actions */}

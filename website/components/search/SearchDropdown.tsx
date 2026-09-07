@@ -111,7 +111,6 @@ const VirtualListbox = React.forwardRef<HTMLUListElement, React.HTMLAttributes<H
  */
 function RequestsAutocomplete() {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [queryInputValue, setQueryInputValue] = useState("");
 
   const normalizedQuery = React.useMemo(
@@ -126,7 +125,7 @@ function RequestsAutocomplete() {
         fetchRequests(normalizedQuery, pageParam, signal),
       initialPageParam: 0,
       getNextPageParam: (lastPage) => lastPage.nextPage,
-      enabled: open && queryInputValue.trim().length > 0,
+      enabled: queryInputValue.trim().length > 0,
       staleTime: 60_000,
       refetchOnWindowFocus: false,
       retry: false,
@@ -144,23 +143,17 @@ function RequestsAutocomplete() {
     []
   );
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
-
   const handleSelect = (event: React.SyntheticEvent, request: Request | null) => {
     if (request) {
       router.push(`/app/requests/${request.id}`);
     }
-    setOpen(false);
     setQueryInputValue("");
   };
 
   return (
     <Autocomplete<Request>
       sx={{ width: "100%" }}
-      open={open}
-      onOpen={handleOpen}
-      onClose={handleClose}
+      open
       options={options}
       getOptionLabel={getRequestLabel}
       isOptionEqualToValue={(option, candidate) => option.id === candidate.id}
@@ -170,9 +163,6 @@ function RequestsAutocomplete() {
       filterOptions={(x) => x}
       onChange={handleSelect}
       onInputChange={handleInputChange}
-      renderOption={(optionProps, option) =>
-        [optionProps, option] as unknown as React.ReactNode
-      }
       renderInput={(params) => {
         const { endAdornment, ...inputSlotProps } = params.slotProps.input;
 

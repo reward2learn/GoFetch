@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useCallback, useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { fetchRequests, normalizeQuery, getRequestLabel } from "./server";
@@ -14,7 +14,6 @@ export default function SearchDropdown() {
   const [allOptions, setAllOptions] = useState<Request[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
 
   const normalizedQuery = useMemo(
     () => normalizeQuery(queryInputValue),
@@ -25,25 +24,16 @@ export default function SearchDropdown() {
   useEffect(() => {
     if (!isOpen) return;
 
-    // Cancel previous request
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
     setIsLoading(true);
 
-    fetchRequests("", 0, controller.signal)
+    fetchRequests("", 0, new AbortController().signal)
       .then((data) => {
-        if (!controller.signal.aborted) {
-          setAllOptions(data.items);
-          setIsLoading(false);
-        }
+        setAllOptions(data.items);
+        setIsLoading(false);
       })
       .catch(() => {
-        if (!controller.signal.aborted) setIsLoading(false);
+        setIsLoading(false);
       });
-
-    return () => { controller.abort(); };
   }, [isOpen]);
 
   // Client-side filter based on input
@@ -60,12 +50,9 @@ export default function SearchDropdown() {
     );
   }, [allOptions, normalizedQuery]);
 
-  const handleInputChange = useCallback(
-    (_event: React.SyntheticEvent, newInputValue: string) => {
-      setQueryInputValue(newInputValue);
-    },
-    []
-  );
+  const handleInputChange = (_event: React.SyntheticEvent, newInputValue: string) => {
+    setQueryInputValue(newInputValue);
+  };
 
   const handleSelect = (
     event: React.SyntheticEvent,

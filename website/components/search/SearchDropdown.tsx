@@ -53,7 +53,6 @@ const VirtualListbox = React.forwardRef<HTMLUListElement, {
     const virtualItems = virtualizer.getVirtualItems();
 
     return (
-      return (
       <ul
         ref={setScrollContainerRef}
         {...listboxProps}

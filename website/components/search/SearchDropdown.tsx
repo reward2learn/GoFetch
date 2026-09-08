@@ -72,17 +72,16 @@ export default function SearchDropdown() {
       noOptionsText=""
       onChange={handleSelect}
       onInputChange={handleInputChange}
-      renderInput={(params) => (
+renderInput={(params) => (
         <TextField
           {...params}
           InputProps={{
-            ...params.InputProps,
             endAdornment: (
               <>
                 {isLoading ? (
                   <CircularProgress color="inherit" size={18} />
                 ) : null}
-                {params.InputProps.endAdornment}
+                {params.slotProps?.input?.endAdornment}
               </>
             ),
           }}

@@ -7,8 +7,13 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { openNotificationDrawer, markNotificationsAsSeen } from "@/redux/slices/ui.slice";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useLogout } from "@/lib/useLogout";
-import SearchDropdown from "@/components/search/SearchDropdown";
+import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
+
+const SearchDropdown = dynamic(() => import("@/components/search/SearchDropdown"), {
+  ssr: false,
+  loading: () => <div className="bg-surface-2 border border-border rounded-lg h-10 w-full" />,
+});
 
 interface AppNavbarProps {
   onSidebarToggle?: () => void;

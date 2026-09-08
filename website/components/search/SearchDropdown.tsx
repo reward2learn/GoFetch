@@ -13,7 +13,6 @@ export default function SearchDropdown() {
   const [queryInputValue, setQueryInputValue] = useState("");
   const [allOptions, setAllOptions] = useState<Request[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
 
   const normalizedQuery = useMemo(
     () => normalizeQuery(queryInputValue),
@@ -21,7 +20,6 @@ export default function SearchDropdown() {
   );
 
   const handleOpen = useCallback(() => {
-    setIsOpen(true);
     setIsLoading(true);
     fetchRequests("", 0)
       .then((data) => {
@@ -59,7 +57,6 @@ export default function SearchDropdown() {
       router.push(`/app/requests/${request.id}`);
     }
     setQueryInputValue("");
-    setIsOpen(false);
   };
 
   return (
@@ -68,9 +65,7 @@ export default function SearchDropdown() {
       sx={{ width: "100%" }}
       getOptionLabel={getRequestLabel}
       isOptionEqualToValue={(option, candidate) => option.id === candidate.id}
-      open={isOpen}
       onOpen={handleOpen}
-      onClose={() => setIsOpen(false)}
       loading={isLoading}
       onChange={handleSelect}
       onInputChange={handleInputChange}

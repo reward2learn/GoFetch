@@ -126,7 +126,7 @@ export function AppNavbar({ onSidebarToggle, sidebarCollapsed, onMobileMenuToggl
               <SearchIcon className="h-5 w-5 text-muted" />
             </button>
           ) : null}
-          <div className="w-full max-w-xl">
+          <div className="w-full  ">
             <SearchDropdown />
           </div>
         </div>

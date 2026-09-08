@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useState, useMemo, useEffect, useRef } from "react";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { fetchRequests, normalizeQuery, getRequestLabel } from "./server";
@@ -11,13 +11,54 @@ import type { Request } from "./Request";
 export default function SearchDropdown() {
   const router = useRouter();
   const [queryInputValue, setQueryInputValue] = useState("");
-  const [options, setOptions] = useState<Request[]>([]);
+  const [allOptions, setAllOptions] = useState<Request[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const normalizedQuery = useMemo(
     () => normalizeQuery(queryInputValue),
     [queryInputValue]
   );
+
+  // Fetch all requests when dropdown opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Cancel previous request
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setIsLoading(true);
+
+    fetchRequests("", 0, controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          setAllOptions(data.items);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setIsLoading(false);
+      });
+
+    return () => { controller.abort(); };
+  }, [isOpen]);
+
+  // Client-side filter based on input
+  const filteredOptions = useMemo(() => {
+    if (!normalizedQuery.trim()) return allOptions;
+    const q = normalizedQuery.toLowerCase();
+    return allOptions.filter(
+      (r) =>
+        r.title.toLowerCase().includes(q) ||
+        r.category.toLowerCase().includes(q) ||
+        (r.outletName || "").toLowerCase().includes(q) ||
+        (r.fromCity || "").toLowerCase().includes(q) ||
+        (r.toCity || "").toLowerCase().includes(q)
+    );
+  }, [allOptions, normalizedQuery]);
 
   const handleInputChange = useCallback(
     (_event: React.SyntheticEvent, newInputValue: string) => {
@@ -25,29 +66,6 @@ export default function SearchDropdown() {
     },
     []
   );
-
-  React.useEffect(() => {
-    if (normalizedQuery.trim().length === 0) {
-      setOptions([]);
-      return;
-    }
-
-    let cancelled = false;
-    setIsLoading(true);
-
-    fetchRequests(normalizedQuery, 0, new AbortController().signal)
-      .then((data) => {
-        if (!cancelled) {
-          setOptions(data.items);
-          setIsLoading(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [normalizedQuery]);
 
   const handleSelect = (
     event: React.SyntheticEvent,
@@ -57,16 +75,19 @@ export default function SearchDropdown() {
       router.push(`/app/requests/${request.id}`);
     }
     setQueryInputValue("");
-    setOptions([]);
+    setIsOpen(false);
   };
 
   return (
     <Autocomplete<Request>
       disablePortal
-      options={options}
+      options={filteredOptions}
       sx={{ width: "100%" }}
       getOptionLabel={getRequestLabel}
       isOptionEqualToValue={(option, candidate) => option.id === candidate.id}
+      open={isOpen}
+      onOpen={() => setIsOpen(true)}
+      onClose={() => setIsOpen(false)}
       loading={isLoading}
       onChange={handleSelect}
       onInputChange={handleInputChange}

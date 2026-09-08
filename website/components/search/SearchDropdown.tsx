@@ -27,7 +27,6 @@ export default function SearchDropdown() {
     []
   );
 
-  // Fetch requests when query changes
   React.useEffect(() => {
     if (normalizedQuery.trim().length === 0) {
       setOptions([]);
@@ -64,35 +63,31 @@ export default function SearchDropdown() {
 
   return (
     <Autocomplete<Request>
-      sx={{ width: "100%" }}
-      open
+      disablePortal
       options={options}
+      sx={{ width: "100%" }}
       getOptionLabel={getRequestLabel}
       isOptionEqualToValue={(option, candidate) => option.id === candidate.id}
       loading={isLoading}
-      disablePortal
-      filterOptions={(x) => x}
+      noOptionsText=""
       onChange={handleSelect}
       onInputChange={handleInputChange}
       renderInput={(params) => (
         <TextField
           {...params}
+          InputProps={{
+            ...params.InputProps,
+            endAdornment: (
+              <>
+                {isLoading ? (
+                  <CircularProgress color="inherit" size={18} />
+                ) : null}
+                {params.InputProps.endAdornment}
+              </>
+            ),
+          }}
           label="Search requests..."
           placeholder="Search perfume, sneakers, tech..."
-          slotProps={{
-            ...params.slotProps,
-            input: {
-              ...params.slotProps?.input,
-              endAdornment: (
-                <>
-                  {isLoading ? (
-                    <CircularProgress color="inherit" size={18} />
-                  ) : null}
-                  {params.slotProps?.input?.endAdornment}
-                </>
-              ),
-            },
-          }}
         />
       )}
     />

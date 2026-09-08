@@ -75,15 +75,19 @@ export default function SearchDropdown() {
 renderInput={(params) => (
         <TextField
           {...params}
-          InputProps={{
-            endAdornment: (
-              <>
-                {isLoading ? (
-                  <CircularProgress color="inherit" size={18} />
-                ) : null}
-                {params.slotProps?.input?.endAdornment}
-              </>
-            ),
+          slotProps={{
+            ...params.slotProps,
+            input: {
+              ...params.slotProps?.input,
+              endAdornment: (
+                <>
+                  {isLoading ? (
+                    <CircularProgress color="inherit" size={18} />
+                  ) : null}
+                  {params.slotProps?.input?.endAdornment}
+                </>
+              ),
+            },
           }}
           label="Search requests..."
           placeholder="Search perfume, sneakers, tech..."

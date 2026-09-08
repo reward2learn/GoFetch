@@ -257,7 +257,7 @@ export function Autocomplete<V extends string = string>({
           className="absolute z-30 mt-1 w-full max-h-60 overflow-y-auto bg-surface-1 border border-border rounded-lg shadow-lg"
         >
           {filteredOptions.length === 0 ? (
-            <li className="px-4 py-2.5 text-sm text-muted text-center">No options</li>
+            <li className="px-4 py-2.5 text-sm text-muted text-center" >No options</li>
           ) : (
             filteredOptions.map((opt, idx) => {
               const selected = isSelected(opt.value);

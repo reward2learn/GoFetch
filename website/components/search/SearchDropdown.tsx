@@ -53,9 +53,11 @@ const VirtualListbox = React.forwardRef<HTMLUListElement, {
     const virtualItems = virtualizer.getVirtualItems();
 
     return (
+      return (
       <ul
         ref={setScrollContainerRef}
         {...listboxProps}
+        className="search-virtual-listbox"
         style={{
           ...style,
           boxSizing: "border-box",
@@ -66,6 +68,9 @@ const VirtualListbox = React.forwardRef<HTMLUListElement, {
           margin: 0,
           position: "relative",
           listStyle: "none",
+          borderRadius: "10px 10px 0px 0px",
+          backgroundColor: "#1a1a2e",
+          color: "#fff",
         }}
       >
         <li
@@ -91,6 +96,7 @@ const VirtualListbox = React.forwardRef<HTMLUListElement, {
                 width: "100%",
                 height: virtualItem.size,
                 transform: `translateY(${virtualItem.start}px)`,
+                color: "#fff",
               }}
             >
               <span className="block truncate text-sm px-2 py-1">

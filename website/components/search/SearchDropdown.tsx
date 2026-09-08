@@ -92,8 +92,33 @@ export default function SearchDropdown() {
       onChange={handleSelect}
       onInputChange={handleInputChange}
       renderInput={(params) => (
-        <TextField {...params} label="Search requests..." placeholder="Search perfume, sneakers, tech..." />
+        <TextField
+          {...params}
+          slotProps={{
+            input: {
+              ...params.slotProps?.input,
+              className: "bg-surface-2 border border-border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary transition-colors",
+              endAdornment: params.slotProps?.input?.endAdornment,
+            },
+          }}
+          label="Search requests..."
+          placeholder="Search perfume, sneakers, tech..."
+        />
       )}
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "10px 10px 0px 0px",
+          },
+        },
+        listbox: {
+          sx: {
+            backgroundColor: "#1a1a2e",
+            color: "#fff",
+            maxHeight: 384,
+          },
+        },
+      }}
     />
   );
 }

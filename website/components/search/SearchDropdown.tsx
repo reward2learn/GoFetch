@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useCallback, useRef, useState, useEffect, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import Autocomplete from "@mui/material/Autocomplete";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -18,35 +18,33 @@ import type { Request } from "./Request";
 const ITEM_HEIGHT_PX = 48;
 const MAX_LISTBOX_HEIGHT_PX = 8 * ITEM_HEIGHT_PX;
 const OVERSCAN = 5;
-const PAGE_SIZE = 20;
-
-type OptionTuple = readonly [React.HTMLAttributes<HTMLLIElement> & { key: React.Key }, Request];
 
 /**
- * Virtualized listbox component for the Autocomplete dropdown.
- * Uses @tanstack/react-virtual for efficient rendering of 10,000+ options.
+ * Virtualized listbox that renders Request items using @tanstack/react-virtual.
+ * Receives `options` as a data prop instead of relying on children tuples.
  */
-const VirtualListbox = React.forwardRef<HTMLUListElement, React.HTMLAttributes<HTMLUListElement> & { resetScrollKey?: string }>(
+const VirtualListbox = React.forwardRef<HTMLUListElement, {
+  options: Request[];
+  resetScrollKey?: string;
+} & React.HTMLAttributes<HTMLUListElement>>(
   function VirtualListbox(props, forwardedRef) {
-    const { children, style, resetScrollKey, ...listboxProps } = props;
-    const items = children as OptionTuple[];
+    const { options, resetScrollKey, style, ...listboxProps } = props;
     const scrollContainerRef = useRef<HTMLUListElement | null>(null);
     const setScrollContainerRef = useRef<HTMLUListElement | null>(null);
 
     const virtualizer = useVirtualizer({
-      count: items.length,
+      count: options.length,
       getScrollElement: () => scrollContainerRef.current,
       estimateSize: () => ITEM_HEIGHT_PX,
       overscan: OVERSCAN,
       useFlushSync: false,
     });
 
-    // Keep forwarded ref and scroll ref in sync
+    // Sync the forwarded ref with the virtualizer's scroll element
     useEffect(() => {
       scrollContainerRef.current = setScrollContainerRef.current;
     }, []);
 
-    // Scroll to top when query changes
     useEffect(() => {
       scrollContainerRef.current?.scrollTo({ top: 0 });
       virtualizer.scrollToOffset(0);
@@ -79,14 +77,14 @@ const VirtualListbox = React.forwardRef<HTMLUListElement, React.HTMLAttributes<H
           }}
         />
         {virtualItems.map((virtualItem) => {
-          const [optionProps, option] = items[virtualItem.index];
-          const { key: _optionKey, ...restOptionProps } = optionProps;
+          const request = options[virtualItem.index];
+          if (!request) return null;
           return (
             <li
-              key={String(virtualItem.index)}
-              {...restOptionProps}
+              key={request.id}
+              role="option"
+              aria-selected={false}
               style={{
-                ...optionProps.style,
                 position: "absolute",
                 top: 0,
                 left: 0,
@@ -96,7 +94,7 @@ const VirtualListbox = React.forwardRef<HTMLUListElement, React.HTMLAttributes<H
               }}
             >
               <span className="block truncate text-sm px-2 py-1">
-                {getRequestLabel(option)}
+                {getRequestLabel(request)}
               </span>
             </li>
           );
@@ -118,20 +116,19 @@ function RequestsAutocomplete() {
     [queryInputValue]
   );
 
-  const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage } =
-    useInfiniteQuery({
-      queryKey: ["requests", normalizedQuery],
-      queryFn: ({ pageParam, signal }) =>
-        fetchRequests(normalizedQuery, pageParam, signal),
-      initialPageParam: 0,
-      getNextPageParam: (lastPage) => lastPage.nextPage,
-      enabled: queryInputValue.trim().length > 0,
-      staleTime: 60_000,
-      refetchOnWindowFocus: false,
-      retry: false,
-    });
+  const { data, isFetching, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ["requests", normalizedQuery],
+    queryFn: ({ pageParam, signal }) =>
+      fetchRequests(normalizedQuery, pageParam, signal),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+    enabled: queryInputValue.trim().length > 0,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
 
-  const options = React.useMemo(
+  const options = useMemo(
     () => data?.pages.flatMap((page) => page.items) ?? [],
     [data]
   );
@@ -191,6 +188,7 @@ function RequestsAutocomplete() {
       slotProps={{
         listbox: {
           component: VirtualListbox,
+          options,
           resetScrollKey: normalizedQuery,
         } as any,
       }}

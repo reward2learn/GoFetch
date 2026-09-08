@@ -33,7 +33,7 @@ export function matchesRequest(request: Request, query: string): boolean {
 export async function fetchRequests(
   query: string,
   page: number,
-  signal: AbortSignal
+  signal?: AbortSignal
 ): Promise<RequestsPage> {
   const url = new URL("/api/requests", window.location.origin);
   if (query) url.searchParams.set("q", query);

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { fetchRequests, normalizeQuery, getRequestLabel } from "./server";
@@ -20,13 +20,10 @@ export default function SearchDropdown() {
     [queryInputValue]
   );
 
-  // Fetch all requests when dropdown opens
-  useEffect(() => {
-    if (!isOpen) return;
-
+  const handleOpen = useCallback(() => {
+    setIsOpen(true);
     setIsLoading(true);
-
-    fetchRequests("", 0, new AbortController().signal)
+    fetchRequests("", 0)
       .then((data) => {
         setAllOptions(data.items);
         setIsLoading(false);
@@ -34,7 +31,7 @@ export default function SearchDropdown() {
       .catch(() => {
         setIsLoading(false);
       });
-  }, [isOpen]);
+  }, []);
 
   // Client-side filter based on input
   const filteredOptions = useMemo(() => {
@@ -67,13 +64,12 @@ export default function SearchDropdown() {
 
   return (
     <Autocomplete<Request>
-      disablePortal
       options={filteredOptions}
       sx={{ width: "100%" }}
       getOptionLabel={getRequestLabel}
       isOptionEqualToValue={(option, candidate) => option.id === candidate.id}
       open={isOpen}
-      onOpen={() => setIsOpen(true)}
+      onOpen={handleOpen}
       onClose={() => setIsOpen(false)}
       loading={isLoading}
       onChange={handleSelect}
